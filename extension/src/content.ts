@@ -1,4 +1,5 @@
 import { MinasonaMap, MinasonaStorage } from "./types";
+import browser from "webextension-polyfill";
 
 const API_URL = "https://arcade.minawan.dog/public/minasonas";
 const ALLOWED_CHANNEL = "cerbervt";
@@ -34,48 +35,49 @@ startSupervisor();
  * The mapping is set by the background script and updated once per hour.
  * todo: get regularly not just once
  */
-function fetchMinasonaMap() {
-  chrome.storage.local.get(["minasonaMap"], (result: { minasonaMap?: MinasonaStorage }) => {
-    if (result.minasonaMap) {
-      for (const twitchName in result.minasonaMap) {
-        const minasonaName = result.minasonaMap[twitchName];
-        minasonaMap[twitchName] = { minasonaName: minasonaName, iconUrl: `${API_URL}/${minasonaName}.webp`, imageUrl: `${API_URL}/${minasonaName}.webp` };
-      }
-    }
-  });
+async function fetchMinasonaMap() {
+  const result: { minasonaMap?: MinasonaStorage } = await browser.storage.local.get(["minasonaMap"]);
+
+  if (!result.minasonaMap) return;
+
+  for (const twitchName in result.minasonaMap) {
+    const minasonaName = result.minasonaMap[twitchName];
+    minasonaMap[twitchName] = { minasonaName: minasonaName, iconUrl: `${API_URL}/${minasonaName}.webp`, imageUrl: `${API_URL}/${minasonaName}.webp` };
+  }
 }
 
 /**
  * Fetches settings from the browsers storage and applies them to the local variables.
  */
-function applySettings() {
-  chrome.storage.sync.get(
-    ["showInOtherChats", "showForEveryone", "iconSize"],
-    (result: { showInOtherChats: boolean; showForEveryone: boolean; iconSize: string }) => {
-      if (settingShowInOtherChats != result.showInOtherChats) {
-        settingShowInOtherChats = result.showInOtherChats || false;
-        // reload observer
-        if (currentChatContainer) {
-          mountObserver(currentChatContainer);
-        }
-      }
+async function applySettings() {
+  const result: { showInOtherChats?: boolean; showForEveryone?: boolean; iconSize?: string } = await browser.storage.sync.get([
+    "showInOtherChats",
+    "showForEveryone",
+    "iconSize",
+  ]);
 
-      if (settingShowForEveryone != result.showForEveryone) {
-        settingShowForEveryone = result.showForEveryone || false;
-        if (!settingShowForEveryone) {
-          minasonaMap = {};
-          fetchMinasonaMap();
-        }
-      }
+  if (settingShowInOtherChats != result.showInOtherChats) {
+    settingShowInOtherChats = result.showInOtherChats || false;
+    // reload observer
+    if (currentChatContainer) {
+      mountObserver(currentChatContainer);
+    }
+  }
 
-      if (settingIconSize != result.iconSize) {
-        settingIconSize = result.iconSize || "32";
-      }
-    },
-  );
+  if (settingShowForEveryone != result.showForEveryone) {
+    settingShowForEveryone = result.showForEveryone || false;
+    if (!settingShowForEveryone) {
+      minasonaMap = {};
+      fetchMinasonaMap();
+    }
+  }
+
+  if (settingIconSize != result.iconSize) {
+    settingIconSize = result.iconSize || "32";
+  }
 }
 // listen for settings changes
-chrome.storage.onChanged.addListener((_changes, namespace) => {
+browser.storage.onChanged.addListener((_changes, namespace) => {
   if (namespace === "sync") {
     applySettings();
   }

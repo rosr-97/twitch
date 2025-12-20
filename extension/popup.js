@@ -1,4 +1,6 @@
-document.addEventListener("DOMContentLoaded", () => {
+import browser from "webextension-polyfill";
+
+document.addEventListener("DOMContentLoaded", async () => {
   // init states
   const showInOtherChatsCheckbox = document.getElementById("showInOtherChats");
   const showForEveryoneCheckbox = document.getElementById("showForEveryone");
@@ -7,25 +9,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const labelText = document.getElementById("rangeLabel");
   const minasonaIcon = document.querySelector(".minasona-icon");
 
-  chrome.storage.sync.get(["showInOtherChats", "showForEveryone", "iconSize"], (result) => {
-    showInOtherChatsCheckbox.checked = result.showInOtherChats || false;
-    showForEveryoneCheckbox.checked = result.showForEveryone || false;
+  const result = await browser.storage.sync.get(["showInOtherChats", "showForEveryone", "iconSize"]);
+  showInOtherChatsCheckbox.checked = result.showInOtherChats || false;
+  showForEveryoneCheckbox.checked = result.showForEveryone || false;
 
-    iconSize.value = result.iconSize || 32;
-    labelText.innerText = `${result.iconSize || 32} Pixels`;
-    minasonaIcon.style.height = `${result.iconSize || 32}px`;
-  });
+  iconSize.value = result.iconSize || 32;
+  labelText.innerText = `${result.iconSize || 32} Pixels`;
+  minasonaIcon.style.height = `${result.iconSize || 32}px`;
 
   // save new state when user toggles the checkbox
   showInOtherChatsCheckbox.addEventListener("change", () => {
     const isChecked = showInOtherChatsCheckbox.checked;
     // save to storage
-    chrome.storage.sync.set({ showInOtherChats: isChecked });
+    browser.storage.sync.set({ showInOtherChats: isChecked });
   });
 
   showForEveryoneCheckbox.addEventListener("change", () => {
     const isChecked = showForEveryoneCheckbox.checked;
-    chrome.storage.sync.set({ showForEveryone: isChecked });
+    browser.storage.sync.set({ showForEveryone: isChecked });
   });
 
   // icon size slider
@@ -33,6 +34,6 @@ document.addEventListener("DOMContentLoaded", () => {
     labelText.innerText = `${iconSize.value} Pixels`;
     minasonaIcon.style.height = `${iconSize.value}px`;
 
-    chrome.storage.sync.set({ iconSize: iconSize.value });
+    browser.storage.sync.set({ iconSize: iconSize.value });
   });
 });

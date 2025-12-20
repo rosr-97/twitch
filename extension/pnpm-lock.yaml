@@ -14,12 +14,18 @@ importers:
       '@types/node':
         specifier: ^24.10.2
         version: 24.10.2
+      '@types/webextension-polyfill':
+        specifier: ^0.12.4
+        version: 0.12.4
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.7
         version: 7.2.7(@types/node@24.10.2)
+      webextension-polyfill:
+        specifier: ^0.12.0
+        version: 0.12.0
 
 packages:
 
@@ -307,6 +313,9 @@ packages:
   '@types/node@24.10.2':
     resolution: {integrity: sha512-WOhQTZ4G8xZ1tjJTvKOpyEVSGgOTvJAfDK3FNFgELyaTpzhdgHVHeqW8V+UJvzF5BT+/B54T/1S2K6gd9c7bbA==}
 
+  '@types/webextension-polyfill@0.12.4':
+    resolution: {integrity: sha512-wK8YdSI0pDiaehSLDIvtvonYmLwUUivg4Z6JCJO8rkyssMAG82cFJgwPK/V7NO61mJBLg/tXeoXQL8AFzpXZmQ==}
+
   esbuild@0.25.12:
     resolution: {integrity: sha512-bbPBYYrtZbkt6Os6FiTLCTFxvq4tt3JKall1vRwshA3fdVztsLAatFaZobhkBC8/BrPetoa0oksYoKXoG4ryJg==}
     engines: {node: '>=18'}
@@ -402,6 +411,9 @@ packages:
         optional: true
       yaml:
         optional: true
+
+  webextension-polyfill@0.12.0:
+    resolution: {integrity: sha512-97TBmpoWJEE+3nFBQ4VocyCdLKfw54rFaJ6EVQYLBCXqCIpLSZkwGgASpv4oPt9gdKCJ80RJlcmNzNn008Ag6Q==}
 
 snapshots:
 
@@ -568,6 +580,8 @@ snapshots:
     dependencies:
       undici-types: 7.16.0
 
+  '@types/webextension-polyfill@0.12.4': {}
+
   esbuild@0.25.12:
     optionalDependencies:
       '@esbuild/aix-ppc64': 0.25.12
@@ -666,3 +680,5 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.10.2
       fsevents: 2.3.3
+
+  webextension-polyfill@0.12.0: {}

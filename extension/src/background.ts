@@ -1,5 +1,6 @@
-// fetches the minasona list from the server and stores it into the local browser storage
+import browser from "webextension-polyfill";
 
+// fetches the minasona list from the server and stores it into the local browser storage
 async function updateMinasonaMap() {
   try {
     const response = await fetch(`https://us-central1-minasona-twitch-extension.cloudfunctions.net/getMinasonas`, {
@@ -10,7 +11,7 @@ async function updateMinasonaMap() {
     });
     const data = await response.json();
 
-    chrome.storage.local.set({ minasonaMap: data });
+    browser.storage.local.set({ minasonaMap: data });
     console.log("Minasona map updated");
   } catch (error) {
     console.error("Failed to fetch minasonas: ", error);
@@ -18,12 +19,12 @@ async function updateMinasonaMap() {
 }
 
 // update on install and then every 60 mins
-chrome.runtime.onInstalled.addListener(() => {
+browser.runtime.onInstalled.addListener(() => {
   updateMinasonaMap();
-  chrome.alarms.create("refreshMinasonas", { periodInMinutes: 60 });
+  browser.alarms.create("refreshMinasonas", { periodInMinutes: 60 });
 });
 
-chrome.alarms.onAlarm.addListener((alarm) => {
+browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "refreshMinasonas") {
     updateMinasonaMap();
   }
