@@ -170,13 +170,14 @@ function processNode(node: Node) {
   // get username elements for native and 7tv chat
   const nativeUsernameEl = node.querySelector<HTMLElement>(".chat-line__username-container");
   const sevenTvUsernameEl = node.querySelector<HTMLElement>(".seventv-chat-user");
+  const frankerfacezUsernameEl = node.querySelector<HTMLElement>(".chat-line__message-container");
 
   // no username element found
-  if (!nativeUsernameEl && !sevenTvUsernameEl) return;
+  if (!nativeUsernameEl && !sevenTvUsernameEl && !frankerfacezUsernameEl) return;
   // minasona-icon already appended
-  if ((sevenTvUsernameEl || nativeUsernameEl).querySelector<HTMLElement>(".minasona-icon")) return;
+  if ((sevenTvUsernameEl || nativeUsernameEl || frankerfacezUsernameEl).querySelector<HTMLElement>(".minasona-icon")) return;
 
-  const username = (sevenTvUsernameEl || nativeUsernameEl).innerText.toLowerCase();
+  const username = (sevenTvUsernameEl || nativeUsernameEl || frankerfacezUsernameEl?.querySelector(".chat-line__username")).innerText.toLowerCase();
   // username not in existing minasonas
   if (!minasonaMap[username]) {
     if (!settingShowForEveryone) return;
@@ -233,6 +234,22 @@ function processNode(node: Node) {
     if (badgeListElement) {
       // badge span exists -> just append the icon container
       badgeListElement.parentElement.parentElement.append(iconContainer);
+      return;
+    }
+    // badge span does not exist -> create badge span and prepend to username element
+    const newBadgeListElement = document.createElement("span");
+    newBadgeListElement.append(iconContainer);
+    nativeUsernameEl.prepend(newBadgeListElement);
+    return;
+  }
+
+  if (frankerfacezUsernameEl) {
+    // check if badge span is present
+    const badgeListElement = frankerfacezUsernameEl.querySelector<HTMLElement>(".chat-line__message--badges");
+    iconContainer.style.marginRight = "4px";
+    if (badgeListElement) {
+      // badge span exists -> just append the icon container
+      badgeListElement.append(iconContainer);
       return;
     }
     // badge span does not exist -> create badge span and prepend to username element
