@@ -177,10 +177,12 @@ function processNode(node: Node) {
 
   // select any elements where the class contains the word "username" or "author"
   // this is most likely the element the username is in
-  const usernameElements = node.querySelectorAll<HTMLElement>('[class*="username"], [class*="author"]');
-  // select the last element selected to get the "deepest" element
+  const usernameElement = node.querySelector<HTMLElement>('[class*="username"], [class*="author"]');
+  if (!usernameElement) return;
+  // check if there's another username element inside the detected element
   // on native this is important to select only the name and not the element containing badges + name
-  const innerUsernameEl = usernameElements[usernameElements.length - 1] ?? null;
+  let innerUsernameEl = usernameElement.querySelector<HTMLElement>('[class*="username"]');
+  innerUsernameEl = innerUsernameEl || usernameElement;
 
   // no username element found
   if (!innerUsernameEl) return;
