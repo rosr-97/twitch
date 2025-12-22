@@ -23,12 +23,6 @@ async function updateMinasonaMap() {
         fallbackImageUrl: d.minasonaPng256,
       };
     });
-    reducedData["hellping219"] = {
-      iconUrl: "https://storage.googleapis.com/minawan-pics.firebasestorage.app/minawan-backfill/Cerby_64x64.avif",
-      fallbackIconUrl: "https://storage.googleapis.com/minawan-pics.firebasestorage.app/minawan-backfill/Cerby_64x64.png",
-      imageUrl: "https://storage.googleapis.com/minawan-pics.firebasestorage.app/minawan-backfill/Cerby_256x256.avif",
-      fallbackImageUrl: "https://storage.googleapis.com/minawan-pics.firebasestorage.app/minawan-backfill/Cerby_256x256.png",
-    };
 
     browser.storage.local.set({ minasonaMap: reducedData });
     console.log("Minasona map updated");
