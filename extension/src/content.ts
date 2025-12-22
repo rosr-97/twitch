@@ -310,6 +310,9 @@ function showMinasonaPopover(minasonaIcon: HTMLElement, imageUrl: string, fallba
   // calc position for popover
   let leftPos = rect.left + rect.width / 2 - popWidth / 2;
   let topPos = rect.top - popHeight - gap;
+  if (topPos < 0) {
+    topPos = rect.bottom + gap;
+  }
   popover.style.left = `${leftPos}px`;
   popover.style.top = `${topPos}px`;
 
