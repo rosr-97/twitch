@@ -259,6 +259,7 @@ function createFFZToolTip(minasonaName: string, imageUrl: string): HTMLElement {
 
   const badgeTip = document.createElement("div");
   badgeTip.classList.add("ffz-badge-tip");
+  badgeTip.style.marginBottom = "0";
   badgeTip.insertAdjacentText("afterbegin", `${minasonaName}`);
   toolTip.append(badgeTip);
 
