@@ -1,18 +1,11 @@
-import { MinasonaMap, MinasonaStorage } from "./types";
+import { MinasonaStorage } from "./types";
 import browser from "webextension-polyfill";
 
-const API_URL = "https://arcade.minawan.dog/public/minasonas";
 const ALLOWED_CHANNEL = "cerbervt";
-const DEFAULT_MINASONAS = [
-  "https://firebasestorage.googleapis.com/v0/b/minasona-twitch-extension.firebasestorage.app/o/Minawan_Yellow_72x72.webp?alt=media&token=37f8341c-c407-48a3-a2d3-09b62c1f4fef",
-  "https://firebasestorage.googleapis.com/v0/b/minasona-twitch-extension.firebasestorage.app/o/Minawan_Red_72x72.webp?alt=media&token=75aaa4ac-7f6b-4a39-9ba5-2a00ae6036f2",
-  "https://firebasestorage.googleapis.com/v0/b/minasona-twitch-extension.firebasestorage.app/o/Minawan_Purple_72x72.webp?alt=media&token=5c83366e-213c-4712-8ee8-cbd32a5b67f8",
-  "https://firebasestorage.googleapis.com/v0/b/minasona-twitch-extension.firebasestorage.app/o/Minawan_Green_72x72.webp?alt=media&token=43412b57-7e28-4008-bda9-52449402851f",
-  "https://firebasestorage.googleapis.com/v0/b/minasona-twitch-extension.firebasestorage.app/o/Minawan_Blue_72x72.webp?alt=media&token=af86f8cf-600f-4cab-832c-48fbf19b3f48",
-];
 
 // the mapping of twitch usernames to minasona names and image urls
-let minasonaMap: MinasonaMap = {};
+let minasonaMap: MinasonaStorage = {};
+let defaultMinasonaMap: string[] = [];
 
 // the currently observed chat container and its observer
 let currentChatContainer: HTMLElement | null = null;
@@ -36,14 +29,11 @@ startSupervisor();
  * todo: get regularly not just once
  */
 async function fetchMinasonaMap() {
-  const result: { minasonaMap?: MinasonaStorage } = await browser.storage.local.get(["minasonaMap"]);
+  const result: { minasonaMap?: MinasonaStorage; standardMinasonaUrls?: string[] } = await browser.storage.local.get(["minasonaMap", "standardMinasonaUrls"]);
 
-  if (!result.minasonaMap) return;
-
-  for (const twitchName in result.minasonaMap) {
-    const minasonaName = result.minasonaMap[twitchName];
-    minasonaMap[twitchName] = { minasonaName: minasonaName, iconUrl: `${API_URL}/${minasonaName}.webp`, imageUrl: `${API_URL}/${minasonaName}.webp` };
-  }
+  if (!result) return;
+  minasonaMap = result.minasonaMap || {};
+  defaultMinasonaMap = result.standardMinasonaUrls || [];
 }
 
 /**
@@ -93,7 +83,7 @@ function startSupervisor() {
     // get native and 7tv chat containers
     const nativeChatContainer = document.querySelector<HTMLElement>(".chat-scrollable-area__message-container");
     const sevenTvChatContainer = document.querySelector<HTMLElement>(".seventv-chat-list");
-    const vodChatContainer = document.querySelector<HTMLElement>("ul.InjectLayout-sc-1i43xsx-0"); // todo: test if this is really always the classname
+    const vodChatContainer = document.querySelector<HTMLElement>('ul[class^="InjectLayout-sc"]');
 
     // seven tv has priority
     if (sevenTvChatContainer) {
@@ -133,7 +123,7 @@ function mountObserver(container: HTMLElement) {
 
   currentChatContainer = container;
 
-  // if setting does not allow other channels -> check if channel is in allowed list
+  // if setting does not allow other channels -> check if channel is allowed
   if (!settingShowInOtherChats) {
     // check if the current twitch channel is supported
     const path = window.location.pathname.toLowerCase();
@@ -194,22 +184,35 @@ function processNode(node: Node) {
   if (!minasonaMap[username]) {
     if (!settingShowForEveryone) return;
     // add uncustomized minasona
-    const rnd = Math.floor(Math.random() * DEFAULT_MINASONAS.length);
-    minasonaMap[username] = { minasonaName: "", iconUrl: DEFAULT_MINASONAS[rnd], imageUrl: "" };
+    const rnd = Math.floor((Math.random() * Object.keys(defaultMinasonaMap).length) / 2) * 2;
+    minasonaMap[username] = {
+      iconUrl: defaultMinasonaMap[rnd],
+      fallbackIconUrl: defaultMinasonaMap[rnd + 1],
+      imageUrl: "",
+      fallbackImageUrl: "",
+    };
   }
 
   // create icon
-  const icon = document.createElement("img");
-  icon.src = minasonaMap[username].iconUrl;
-  icon.classList.add("minasona-icon");
-  icon.style.height = `${settingIconSize || "32"}px`;
+  const source = document.createElement("source");
+  source.srcset = minasonaMap[username].iconUrl;
+  source.type = "image/avif";
+  const img = document.createElement("img");
+  img.src = minasonaMap[username].fallbackIconUrl;
+  img.loading = "lazy";
+  img.classList.add("minasona-icon");
+  img.style.height = `${settingIconSize || "32"}px`;
+
+  const icon = document.createElement("picture");
+  icon.appendChild(source);
+  icon.appendChild(img);
   // add popover on click if its not a default minasona
   if (minasonaMap[username].imageUrl) {
     icon.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      showMinasonaPopover(e.target as HTMLElement, minasonaMap[username].minasonaName, minasonaMap[username].imageUrl);
+      showMinasonaPopover(e.target as HTMLElement, minasonaMap[username].imageUrl, minasonaMap[username].fallbackImageUrl);
     });
   }
 
@@ -281,13 +284,20 @@ function getOrCreatePopover(): HTMLElement {
     popoverInstance = document.createElement("div");
     popoverInstance.classList.add("twitch-minasona-popover");
 
-    // title to show the minasonas name
-    const title = document.createElement("div");
-    title.classList.add("minasona-name");
-    popoverInstance.appendChild(title);
+    const loader = document.createElement("div");
+    loader.classList.add("loader");
+    popoverInstance.appendChild(loader);
 
+    // image elements for avif and png as a fallback
+    const source = document.createElement("source");
+    source.type = "image/avif";
     const img = document.createElement("img");
-    popoverInstance.appendChild(img);
+    img.loading = "lazy";
+
+    const picture = document.createElement("picture");
+    picture.appendChild(source);
+    picture.appendChild(img);
+    popoverInstance.appendChild(picture);
 
     document.body.append(popoverInstance);
 
@@ -307,12 +317,27 @@ function getOrCreatePopover(): HTMLElement {
  * @param minasonaName The name of the minasona to display.
  * @param imageUrl The image URL of the minasona to display.
  */
-function showMinasonaPopover(minasonaIcon: HTMLElement, minasonaName: string, imageUrl: string) {
+function showMinasonaPopover(minasonaIcon: HTMLElement, imageUrl: string, fallbackImageUrl: string) {
   const popover = getOrCreatePopover();
-  const title = popover.querySelector<HTMLDivElement>(".minasona-name");
-  title.innerText = minasonaName;
+
+  const picture = popover.querySelector<HTMLPictureElement>("picture");
+  picture.hidden = true;
+  const loader = popover.querySelector<HTMLDivElement>(".loader");
+  loader.style.display = "block";
+  const source = popover.querySelector<HTMLSourceElement>("source");
   const img = popover.querySelector<HTMLImageElement>("img");
-  img.src = imageUrl;
+  img.classList.remove("loaded");
+
+  preloadImage(imageUrl)
+    .then(() => {
+      swapPicture(source, imageUrl, img, fallbackImageUrl, loader, picture);
+    })
+    .catch(() => {
+      // fallback to png
+      preloadImage(fallbackImageUrl).then(() => {
+        swapPicture(source, null, img, fallbackImageUrl, loader, picture);
+      });
+    });
 
   // get popover dimensions
   const popoverRect = popover.getBoundingClientRect();
@@ -325,9 +350,44 @@ function showMinasonaPopover(minasonaIcon: HTMLElement, minasonaName: string, im
   // calc position for popover
   let leftPos = rect.left + rect.width / 2 - popWidth / 2;
   let topPos = rect.top - popHeight - gap;
+  if (topPos < 0) {
+    topPos = rect.bottom + gap;
+  }
   popover.style.left = `${leftPos}px`;
   popover.style.top = `${topPos}px`;
 
   // show popover
   popover.classList.add("active");
+}
+
+async function preloadImage(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve();
+    i.onerror = () => reject();
+    i.src = src;
+  });
+}
+
+function swapPicture(
+  sourceElement: HTMLSourceElement,
+  avifSrc: string | null,
+  imageElement: HTMLImageElement,
+  pngSrc: string,
+  loader: HTMLDivElement,
+  pictureElement: HTMLPictureElement,
+) {
+  if (avifSrc) {
+    sourceElement.srcset = avifSrc;
+  } else {
+    sourceElement.srcset = "";
+  }
+  imageElement.src = pngSrc;
+
+  loader.style.display = "none";
+  pictureElement.hidden = false;
+
+  requestAnimationFrame(() => {
+    imageElement.classList.add("loaded");
+  });
 }

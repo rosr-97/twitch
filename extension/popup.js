@@ -33,7 +33,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   iconSize.addEventListener("input", () => {
     labelText.innerText = `${iconSize.value} Pixels`;
     minasonaIcon.style.height = `${iconSize.value}px`;
+  });
 
+  iconSize.addEventListener("change", () => {
     browser.storage.sync.set({ iconSize: iconSize.value });
   });
 });
