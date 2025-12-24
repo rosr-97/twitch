@@ -3,22 +3,27 @@ styleNode.setAttribute("type", "text/css");
 styleNode.id = "ffz-minasona-styles-badges";
 document.head.appendChild(styleNode);
 
-const BADGE_CSS = `.minasona-icon-container .ffz-badge { display: none !important; }`;
+let badgeCSSRules = [];
 
-startFFZListener();
+// Starts listening for FFZ setting changes.
+window.addEventListener('message', (event) => {
+  if (event.source !== window) return;
+  if (typeof event.data !== 'object' || event.data === null) return;
+
+  if (typeof event.data?.FFZ_BADGE_IMAGES_SETTING === 'boolean')
+    switchCSSRule(!event.data.FFZ_BADGE_IMAGES_SETTING, `.minasona-icon-container .ffz-badge { display: none !important; }`);
+});
 
 /**
- * Starts listening for FFZ setting changes.
+ * Enables or disables a CSS rule by adding or removing it from the style node.
+ * @param enable whether to enable or disable the rule
+ * @param rule the CSS rule to add or remove
  */
-function startFFZListener() {
-  window.addEventListener('message', (event) => {
-    if (event.source !== window) return;
-    if (typeof event.data !== 'object' || event.data === null) return;
-    if (typeof event.data?.FFZ_BADGE_IMAGES_SETTING === 'undefined') return;
-
-    if (event.data?.FFZ_BADGE_IMAGES_SETTING)
-      styleNode.textContent = '';
-    else
-      styleNode.textContent = BADGE_CSS;
-  });
+function switchCSSRule(enable: boolean, rule: string) {
+  if (!enable)
+    badgeCSSRules = badgeCSSRules.filter(r => !r.includes(rule));
+  else if (!badgeCSSRules.some(r => r.includes(rule)))
+    badgeCSSRules.push(rule)
+  
+  styleNode.textContent = badgeCSSRules.join('\n');
 }
