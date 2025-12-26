@@ -85,7 +85,7 @@
           default: true,
           ui: {
             path: 'Add-Ons > Minasona Twitch Extension >> General',
-            title: 'Enable Badges',
+            title: 'Enable badges',
             description: 'Show all available Minasona user badges',
             component: 'setting-check-box',
           },
@@ -119,8 +119,8 @@
           default: '32',
           ui: {
             path: 'Add-Ons > Minasona Twitch Extension >> Badges',
-            title: 'Minasona Size',
-            description: 'Size of the minasona badge.',
+            title: 'Minasona size',
+            description: 'Size of the Minasona badge.',
             component: 'setting-text-box',
             process: (newVal, _oldVal) => {
               console.log(typeof newVal);
