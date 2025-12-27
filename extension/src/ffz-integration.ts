@@ -131,14 +131,27 @@
         
         this.enable();
         
-        window.postMessage({ FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE: this.settings.get('addon.minasona_twitch_extension.iconsize') })
-        window.postMessage({ FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE: this.settings.get('addon.minasona_twitch_extension.everywhere') })
-        window.postMessage({ FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN: this.settings.get('addon.minasona_twitch_extension.everywan') })
+        const options = {
+          FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE: this.settings.get('addon.minasona_twitch_extension.iconsize'),
+          FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE: this.settings.get('addon.minasona_twitch_extension.everywhere'),
+          FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN: this.settings.get('addon.minasona_twitch_extension.everywan'),
+        };
+        
+        window.postMessage(options);
         window.postMessage({ FFZ_MINASONATWITCHEXTENSION_READY: true });
       }
       
       onEnable() {        
         window.addEventListener('message', ((event) => {
+          // Refresh badges upon changing the setting
+          if (event.source !== window) return;
+          if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SHOWFOREVERYONE !== 'boolean') return;
+          if (!this.isEnabled) return;
+          this.updateBadges();
+        }).bind(this));
+
+        window.addEventListener('message', ((event) => {
+          // Refresh badges upon changing the setting
           if (event.source !== window) return;
           if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SHOWINOTHERCHATS !== 'boolean') return;
           if (!this.isEnabled) return;
@@ -147,20 +160,19 @@
         }).bind(this));
         
         window.addEventListener('message', ((event) => {
+          // Creates a new badge
           if (event.source !== window) return;
           if (typeof event.data.FFZ_MINASONATWITCHEXTENSION_BADGE !== 'object') return;
           if (!this.isEnabled) return;
           
-          const isGeneric = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.isGeneric;
-          if (isGeneric) return;
-          
           const userId = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.userId;
           if (this.users.has(userId)) return;
           
+          const isGeneric = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.isGeneric;
           const username = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.username;
           const imageUrl = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.imageUrl;
           const iconUrl = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.iconUrl;
-          this.users.set(userId, { username, imageUrl, iconUrl });
+          this.users.set(userId, { username, imageUrl, iconUrl, isGeneric });
           
           this.registerUserBadge(userId, username, imageUrl, iconUrl);
         }).bind(this));
@@ -168,6 +180,9 @@
         this.updateBadges();
       }
       
+      /**
+       * Registers a new badge for a specific user.
+       */
       async registerUserBadge(userId: string, username: string, imageUrl: string, iconUrl: string) {
         if (this.isSuspended) return;
         
@@ -194,18 +209,27 @@
         this.emit('chat:update-lines-by-user', userId);
       }
       
+      /**
+       * Refreshes the addon badge configuration.
+       */
       async updateBadges() {
         for (const user of this.chat.iterateUsers())
           user.removeAllBadges('addon.minasona_twitch_extension');
+        
+        for (const [userId, { username, imageUrl, iconUrl, isGeneric }] of this.users.entries()) 
+          if (isGeneric) this.users.delete(userId);
                 
         if (this.isEnabled) {
-          for (const [userId, { username, imageUrl, iconUrl }] of this.users.entries())
+          for (const [userId, { username, imageUrl, iconUrl, isGeneric }] of this.users.entries())
             this.registerUserBadge(userId, username, imageUrl, iconUrl);
         }
         
         this.emit('chat:update-lines');
       }
       
+      /**
+       * Recovers an identifier to be used by a badge.
+       */
       getBadgeID(userId) {
         return `addon.minasona_twitch_extension.badge-${userId}`;
       }
