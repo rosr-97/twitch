@@ -50,10 +50,6 @@
 
   function addons_ready(event) {
     class MinasonaTwitchExtension extends window.FrankerFaceZ.utilities.addon.Addon {
-      get isAllowedForEverywan() {
-        return this.settings.get('addon.minasona_twitch_extension.everywan');
-      }
-
       set showInOtherChats(val) {
         if (this._showInOtherChats === val) return;
         this._showInOtherChats = val;
@@ -187,13 +183,13 @@
       /**
        * Retrieves an string hash code equivalent.
        */
-      hashCode(str) {
+      hashCode(chain:string) {
         let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-          hash = (hash << 5) - hash + str.charCodeAt(i);
-          hash = hash | 0; // Convert to 32bit integer
+        for (let i = 0; i < chain.length; i++) {
+          hash = (hash << 5) - hash + chain.charCodeAt(i);
+          hash = hash | 0;
         }
-        return hash;
+        return `${hash}`;
       }
 
       /**
@@ -203,9 +199,8 @@
         if (this.isSuspended) return;
 
         const _userId = isGeneric ? this.hashCode(iconUrl) : userId;
-        const badgeId = this.getBadgeID(_userId);
+        const badgeId = this.getBadgeID(_userId, isGeneric);
         const user = this.chat.getUser(userId);
-
         const hasBadge = user.getBadge(badgeId) !== null;
         if (hasBadge) return;
 
@@ -235,10 +230,8 @@
           user.removeAllBadges('addon.minasona_twitch_extension');
 
         if (this.isEnabled) {
-          for (const [userId, { username, imageUrl, iconUrl, isGeneric }] of this.users.entries()) {
-            if (!this.isAllowedForEverywan && isGeneric) continue;
+          for (const [userId, { username, imageUrl, iconUrl, isGeneric }] of this.users.entries()) 
             this.registerUserBadge(userId, username, imageUrl, iconUrl, isGeneric);
-          }
         }
 
         this.emit('chat:update-lines');
@@ -247,8 +240,8 @@
       /**
       * Recovers an identifier to be used by a badge.
       */
-      getBadgeID(userId) {
-        return `addon.minasona_twitch_extension.badge-${userId}`;
+      getBadgeID(userId:string, isGeneric:boolean) {
+        return `addon.minasona_twitch_extension.badge${isGeneric ? '_generic' : ''}-${userId}`;
       }
     }
 

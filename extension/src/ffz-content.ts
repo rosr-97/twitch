@@ -18,6 +18,8 @@
       switchCSSRule(true, `.minasona-icon-container:has(+ .ffz-badge[data-badge*="addon.minasona_twitch_extension.badge"])`, `display: none;`);
       switchCSSRule(true, `.minasona-icon-container`, `display: none;`);
     }
+    if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SHOWFOREVERYONE === 'boolean')
+      switchCSSRule(!event.data?.FFZ_MINASONATWITCHEXTENSION_SHOWFOREVERYONE, `.ffz-badge[data-badge*="addon.minasona_twitch_extension.badge_generic"]`, `display: none;`);
 
     if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_ICONSIZE === 'string')
       switchCSSRule(true, '.ffz-badge[data-badge*="addon.minasona_twitch_extension.badge"]', `
