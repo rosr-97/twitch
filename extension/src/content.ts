@@ -18,16 +18,33 @@ let popoverInstance: HTMLElement = null;
 let settingShowInOtherChats = false;
 let settingShowForEveryone = false;
 let settingIconSize = "32";
+let isFrankerFaceZReady = false;
+
+window.addEventListener('message', (event) => {
+  if (event.source !== window) return;
+
+  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_READY === 'boolean')
+    isFrankerFaceZReady = event.data?.FFZ_MINASONATWITCHEXTENSION_READY;
+
+  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE === 'boolean')
+    browser.storage.sync.set({ showInOtherChats: event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE });
+
+  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN === 'boolean')
+    browser.storage.sync.set({ showForEveryone: event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN });
+
+  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE === 'string')
+    browser.storage.sync.set({ iconSize: event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE });
+});
 
 applySettings();
 fetchMinasonaMap();
 startSupervisor();
 
 /**
- * Gets the minasona mapping from browser storage and starts the supervisor.
- * The mapping is set by the background script and updated once per hour.
- * todo: get regularly not just once
- */
+* Gets the minasona mapping from browser storage and starts the supervisor.
+* The mapping is set by the background script and updated once per hour.
+* todo: get regularly not just once
+*/
 async function fetchMinasonaMap() {
   const result: { minasonaMap?: MinasonaStorage; standardMinasonaUrls?: string[] } = await browser.storage.local.get(["minasonaMap", "standardMinasonaUrls"]);
 
@@ -37,8 +54,8 @@ async function fetchMinasonaMap() {
 }
 
 /**
- * Fetches settings from the browsers storage and applies them to the local variables.
- */
+* Fetches settings from the browsers storage and applies them to the local variables.
+*/
 async function applySettings() {
   const result: { showInOtherChats?: boolean; showForEveryone?: boolean; iconSize?: string } = await browser.storage.sync.get([
     "showInOtherChats",
@@ -65,6 +82,16 @@ async function applySettings() {
   if (settingIconSize != result.iconSize) {
     settingIconSize = result.iconSize || "32";
   }
+
+  const isCurrentChannelAllowed: boolean = window.location.pathname.toLowerCase()
+    .split("/").filter((seg) => seg.length > 0)[0] === ALLOWED_CHANNEL;
+  const options = {
+    FFZ_MINASONATWITCHEXTENSION_SHOWINOTHERCHATS: settingShowInOtherChats,
+    FFZ_MINASONATWITCHEXTENSION_ISCURRENTCHANNELALLOWED: isCurrentChannelAllowed,
+    FFZ_MINASONATWITCHEXTENSION_SHOWFOREVERYONE: settingShowForEveryone,
+    FFZ_MINASONATWITCHEXTENSION_ICONSIZE: settingIconSize,
+  };
+  window.postMessage(options);
 }
 // listen for settings changes
 browser.storage.onChanged.addListener((_changes, namespace) => {
@@ -74,10 +101,10 @@ browser.storage.onChanged.addListener((_changes, namespace) => {
 });
 
 /**
- * Starts the supervisor that checks for chat container changes every 5 seconds.
- * When a new chat container is detected, it mounts a new observer on it.
- * Only call this function once.
- */
+* Starts the supervisor that checks for chat container changes every 5 seconds.
+* When a new chat container is detected, it mounts a new observer on it.
+* Only call this function once.
+*/
 function startSupervisor() {
   setInterval(() => {
     // get native and 7tv chat containers
@@ -115,9 +142,9 @@ function startSupervisor() {
 }
 
 /**
- * Mounts a mutation observer on the given chat container to monitor new chat messages.
- * @param container The chat container element to observe.
- */
+* Mounts a mutation observer on the given chat container to monitor new chat messages.
+* @param container The chat container element to observe.
+*/
 function mountObserver(container: HTMLElement) {
   disconnectObserver();
 
@@ -148,8 +175,8 @@ function mountObserver(container: HTMLElement) {
 }
 
 /**
- * Disconnects the current observer from the chat container, if any.
- */
+* Disconnects the current observer from the chat container, if any.
+*/
 function disconnectObserver() {
   if (currentObserver) {
     currentObserver.disconnect();
@@ -159,9 +186,9 @@ function disconnectObserver() {
 }
 
 /**
- * Processes a newly added node in the chat container.
- * @param node The added node to process.
- */
+* Processes a newly added node in the chat container.
+* @param node The added node to process.
+*/
 function processNode(node: Node) {
   if (!(node instanceof HTMLElement)) return;
 
@@ -208,11 +235,16 @@ function processNode(node: Node) {
   icon.appendChild(img);
   // add popover on click if its not a default minasona
   if (minasonaMap[username].imageUrl) {
-    icon.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+    node.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+      const isBadge = target.dataset?.badge?.startsWith("addon.minasona_twitch_extension.badge-");
+      const isIcon = target.classList.contains("minasona-icon");
 
-      showMinasonaPopover(e.target as HTMLElement, minasonaMap[username].imageUrl, minasonaMap[username].fallbackImageUrl);
+      if (isBadge || isIcon) {
+        e.preventDefault();
+        e.stopPropagation();
+        showMinasonaPopover(target, minasonaMap[username].imageUrl, minasonaMap[username].fallbackImageUrl);
+      }
     });
   }
 
@@ -225,8 +257,22 @@ function processNode(node: Node) {
   // get badge slot to place icon there if present
   // this is needed to preserve usernames containing color gradients and also the correct display of the pronouns extension
   const badgeSlot = node.querySelector<HTMLElement>(".chat-line__message--badges, .seventv-chat-user-badge-list");
+  const isGeneric = defaultMinasonaMap.includes(minasonaMap[username].iconUrl)
+    || defaultMinasonaMap.includes(minasonaMap[username].imageUrl);
 
-  if (!badgeSlot && innerUsernameEl) {
+  if (isFrankerFaceZReady) {
+    // send badge blueprint to FFZ if available
+    window.postMessage({
+      FFZ_MINASONATWITCHEXTENSION_BADGE: {
+        userId: node.querySelector<HTMLElement>("[data-user-id]")?.dataset?.userId ?? 0,
+        iconUrl: minasonaMap[username].iconUrl,
+        imageUrl: minasonaMap[username].imageUrl,
+        username: innerUsernameEl.innerText,
+        isGeneric: isGeneric
+      }
+    });
+  }
+  else if (!badgeSlot && innerUsernameEl) {
     // just prepend iconContainer to name
     innerUsernameEl.prepend(iconContainer);
   } else if (badgeSlot) {
@@ -236,9 +282,9 @@ function processNode(node: Node) {
 }
 
 /**
- * Gets or creates the popover element for displaying the enlarged minasona image.
- * @returns The popover HTMLElement.
- */
+* Gets or creates the popover element for displaying the enlarged minasona image.
+* @returns The popover HTMLElement.
+*/
 function getOrCreatePopover(): HTMLElement {
   if (!popoverInstance) {
     popoverInstance = document.createElement("div");
@@ -272,11 +318,11 @@ function getOrCreatePopover(): HTMLElement {
 }
 
 /**
- * Shows the minasona popover above to the given icon element.
- * @param minasonaIcon The parent icon element to position the popover above.
- * @param minasonaName The name of the minasona to display.
- * @param imageUrl The image URL of the minasona to display.
- */
+* Shows the minasona popover above to the given icon element.
+* @param minasonaIcon The parent icon element to position the popover above.
+* @param minasonaName The name of the minasona to display.
+* @param imageUrl The image URL of the minasona to display.
+*/
 function showMinasonaPopover(minasonaIcon: HTMLElement, imageUrl: string, fallbackImageUrl: string) {
   const popover = getOrCreatePopover();
 
