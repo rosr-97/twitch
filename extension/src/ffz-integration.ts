@@ -12,28 +12,28 @@
       baseConfig.showForEveryone !== null ||
       baseConfig.iconSize !== null
     )
-    window.removeEventListener('message', handleMessage);
+      window.removeEventListener('message', handleMessage);
   }
   window.addEventListener('message', handleMessage);
-  
+
   let attempts = 0;
   new MutationObserver((mutationsList, observer) => {
     attempts++;
-    
+
     if (attempts % 40 === 0) {// 10 attempts or give up
       observer.disconnect();
       console.log(`Failed to initialize Minasona FFZ addon after ${attempts} attempts`);
       return;
     }
-    
+
     if (typeof window.FrankerFaceZ === 'undefined') return;
     if (!window.FrankerFaceZ.instance?.addons) return;
-    
+
     window.FrankerFaceZ.instance.addons.on(':ready', addons_ready);
     console.log(`Minasona FFZ addon initialized after ${attempts} attempts`);
     observer.disconnect();
   }).observe(document.body, { childList: true, subtree: true });
-  
+
   const metadata = {
     name: 'Minasona Twitch Extension',
     short_name: 'MinasonaTwitchExtension',
@@ -47,24 +47,24 @@
     settings: 'add_ons.minasona_twitch_extension',
     icon: 'https://raw.githubusercontent.com/minasona-extension/twitch/refs/heads/main/extension/assets/Minawan_Purple.webp'
   };
-  
+
   function addons_ready(event) {
     class MinasonaTwitchExtension extends window.FrankerFaceZ.utilities.addon.Addon {
       get isEnabled() {
         return this.settings.get('addon.minasona_twitch_extension.badges');
       }
-      
+
       constructor(...args) {
         super(...args);
-        
+
         this.inject('chat');
         this.inject('chat.badges');
         this.inject('settings');
         this.inject("site.router");
-        
+
         this.users = new Map();
         this.localBadges = new Map();
-        
+
         this.settings.add('addon.minasona_twitch_extension.badges', {
           default: true,
           ui: {
@@ -75,7 +75,7 @@
           },
           changed: (val) => this.updateBadges()
         });
-        
+
         this.settings.add('addon.minasona_twitch_extension.everywhere', {
           default: false,
           ui: {
@@ -86,7 +86,7 @@
           },
           changed: (val) => this.postSettings()
         });
-        
+
         this.settings.add('addon.minasona_twitch_extension.everywan', {
           default: false,
           ui: {
@@ -97,7 +97,7 @@
           },
           changed: (val) => this.postSettings()
         });
-        
+
         this.settings.add("addon.minasona_twitch_extension.iconsize", {
           default: '32',
           ui: {
@@ -113,13 +113,13 @@
           },
           changed: (val) => this.postSettings()
         });
-        
+
         this.enable();
-        
+
         this.postSettings();
         window.postMessage({ FFZ_MINASONATWITCHEXTENSION_READY: true });
       }
-      
+
       /**
       * Posts the current settings of the addon to the content script.
       * @param {Object} options - An object containing the current settings of the addon.
@@ -134,10 +134,10 @@
           FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE: this.settings.get('addon.minasona_twitch_extension.everywhere'),
           FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN: this.settings.get('addon.minasona_twitch_extension.everywan'),
         };
-        
+
         window.postMessage(options);
       }
-      
+
       onEnable() {
         window.addEventListener('message', ((event) => {
           // Refresh badges upon changing the setting
@@ -146,7 +146,7 @@
           if (!this.isEnabled) return;
           this.updateBadges();
         }).bind(this));
-        
+
         window.addEventListener('message', ((event) => {
           // Refresh badges upon changing the setting
           if (event.source !== window) return;
@@ -155,30 +155,30 @@
           this.showInOtherChats = event.data?.FFZ_MINASONATWITCHEXTENSION_SHOWINOTHERCHATS;
           this.updateBadges();
         }).bind(this));
-        
+
         window.addEventListener('message', ((event) => {
           // Creates a new badge
           if (event.source !== window) return;
           if (typeof event.data.FFZ_MINASONATWITCHEXTENSION_BADGE !== 'object') return;
           if (!this.isEnabled) return;
-          
+
           const userId = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.userId;
           if (this.users.has(userId)) return;
-          
+
           const isGeneric = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.isGeneric;
           const imageUrl = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.imageUrl;
           const iconUrl = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.iconUrl;
           const username = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.username;
           this.users.set(userId, { username, imageUrl, iconUrl, isGeneric });
-          
+
           this.registerUserBadge(userId, username, imageUrl, iconUrl, isGeneric);
         }).bind(this));
-        
+
         this.router.on(":route", this.router_route.bind(this));
-        
+
         this.updateBadges();
       }
-      
+
       /**
       * Creates a hash code from a string.
       */
@@ -190,17 +190,20 @@
         }
         return `${hash}`;
       }
-      
+
       /**
        * Refreshes the addon badge configuration on location change.
        */
       router_route(event) {
         // some form of memory cleaning
+        for (const badgeId of this.localBadges.keys())
+          this.badges.removeBadge(badgeId);
+
         this.users.clear();
         this.localBadges.clear();
         this.updateBadges();
       }
-      
+
       /**
       * Registers a new badge for a specific user.
       */
@@ -210,7 +213,7 @@
         const user = this.chat.getUser(userId);
         const hasBadge = user.getBadge(badgeId) !== null;
         if (hasBadge) return;
-        
+
         if (!this.localBadges.get(badgeId)) {
           // Loads badge data and reduce requests
           const data = {
@@ -226,30 +229,30 @@
             click_url: null,
             svg: false,
           };
-          
+
           this.localBadges.set(badgeId, true);
           this.badges.loadBadgeData(badgeId, data);
         }
-        
+
         user.addBadge('addon.minasona_twitch_extension', badgeId);
         this.emit('chat:update-lines-by-user', userId);
       }
-      
+
       /**
       * Refreshes the addon badge configuration.
       */
       async updateBadges() {
         for (const user of this.chat.iterateUsers())
           user.removeAllBadges('addon.minasona_twitch_extension');
-        
+
         if (this.isEnabled) {
           for (const [userId, { username, imageUrl, iconUrl, isGeneric }] of this.users.entries())
             this.registerUserBadge(userId, username, imageUrl, iconUrl, isGeneric);
         }
-        
+
         this.emit('chat:update-lines');
       }
-      
+
       /**
       * Recovers an identifier to be used by a badge.
       */
@@ -257,7 +260,7 @@
         return `addon.minasona_twitch_extension.badge${isGeneric ? '_generic' : ''}-${userId}`;
       }
     }
-    
+
     (MinasonaTwitchExtension as any).register('addon.minasona_twitch_extension', metadata);
   }
 })();
