@@ -4,7 +4,7 @@
     short_name: 'Minasona Twitch Extension',
     author: 'HellPingwan',
     maintainer: 'rosrwan',
-    description: 'Creates a minasona badge for minawan.',
+    description: 'See cute Minawan not only in the stream but in the chat as well! Displays Minasonas as a badge right next to a username in the chat.',
     version: '1.3',
     website: 'https://github.com/minasona-extension/twitch',
     enabled: true,
@@ -185,7 +185,7 @@
           this.registerUserBadge(userId, username, imageUrl, iconUrl, isGeneric);
         }).bind(this));
 
-        this.router.on(":route", this.router_route.bind(this));
+        this.router.on(":route", this.updateBadges.bind(this));
 
         this.badges.loadBadgeData("addon.minasona_twitch_extension.badge_generic", {
           base_id: "addon.minasona_twitch_extension.badge_generic",
@@ -213,18 +213,6 @@
             tooltipExtra: () => `\n(${name})`,
           });
         }
-      }
-
-      /**
-      * Refreshes the addon badge configuration on location change.
-      */
-      router_route(event) {
-        // some form of memory cleaning
-        for (const [userId, { badge_id }] of this.users)
-          this.badges.removeBadge(badge_id);
-
-        this.users.clear();
-        this.updateBadges();
       }
 
       /**
@@ -281,15 +269,13 @@
       * Refreshes the addon badge configuration.
       */
       async updateBadges() {
+        for (const [userId, { badge_id }] of this.users)
+          this.badges.removeBadge(badge_id);
+
+        this.users.clear();
+        
         for (const user of this.chat.iterateUsers())
           user.removeAllBadges('addon.minasona_twitch_extension');
-
-        if (this.isEnabled) {
-          for (const [userId, { title, urls, isGeneric }] of this.users) {
-            this.users.set(userId, undefined);
-            await this.registerUserBadge(userId, title, urls[4], urls[1], isGeneric);
-          }
-        }
 
         this.emit('chat:update-lines');
       }
