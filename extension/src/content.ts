@@ -51,6 +51,9 @@ async function fetchMinasonaMap() {
   if (!result) return;
   minasonaMap = result.minasonaMap || {};
   defaultMinasonaMap = result.standardMinasonaUrls || [];
+  
+  for (const minasonaUrl of defaultMinasonaMap) 
+    window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDDEFAULTMINASONA: minasonaUrl });
 }
 
 /**
