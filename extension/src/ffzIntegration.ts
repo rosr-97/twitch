@@ -74,7 +74,7 @@
         this.inject('chat');
         this.inject('chat.badges');
         this.inject('settings');
-        this.inject("site.router");
+        this.inject('site.router');
 
         this.users = new Map();
 
@@ -86,8 +86,9 @@
             description: 'Show all available Minasona user badges.',
             component: 'setting-check-box',
           },
-          changed: (val) => this.updateBadges()
         });
+        this.settings.getChanges('addon.minasona_twitch_extension.badges', 
+          (val) => this.updateBadges());
 
         this.settings.add('addon.minasona_twitch_extension.everywhere', {
           default: false,
@@ -97,8 +98,9 @@
             description: 'Show Minasonas in other chats.',
             component: 'setting-check-box',
           },
-          changed: (val) => this.postSettings()
         });
+        this.settings.getChanges('addon.minasona_twitch_extension.everywhere', 
+          (val) => window.postMessage({ FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE: val }));
 
         this.settings.add('addon.minasona_twitch_extension.everywan', {
           default: false,
@@ -108,8 +110,9 @@
             description: 'Show Minasonas for everywan.',
             component: 'setting-check-box',
           },
-          changed: (val) => this.postSettings()
         });
+        this.settings.getChanges('addon.minasona_twitch_extension.everywan',
+          (val) => window.postMessage({ FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN: val }));
 
         this.settings.add("addon.minasona_twitch_extension.iconsize", {
           default: '32',
@@ -124,31 +127,12 @@
               return `${iconSize}`;
             },
           },
-          changed: (val) => this.postSettings()
         });
+        this.settings.getChanges("addon.minasona_twitch_extension.iconsize", 
+          (val) => window.postMessage({ FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE: val }));
 
         this.enable();
-
-        this.postSettings();
         window.postMessage({ FFZ_MINASONATWITCHEXTENSION_READY: true });
-      }
-
-      /**
-       * Posts the current settings of the addon to the content script.
-       * @param {Object} options - An object containing the current settings of the addon.
-       * @property {string} FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE - The size of the Minasona badge.
-       * @property {boolean} FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE - Whether to show Minasona badges in other chats.
-       * @property {boolean} FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN - Whether to show Minasona badges for everywan.
-       */
-      postSettings() {
-        // probs fixes invalidated context
-        const options = {
-          FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE: this.settings.get('addon.minasona_twitch_extension.iconsize'),
-          FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE: this.settings.get('addon.minasona_twitch_extension.everywhere'),
-          FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN: this.settings.get('addon.minasona_twitch_extension.everywan'),
-        };
-
-        window.postMessage(options);
       }
 
       onEnable() {
@@ -173,17 +157,16 @@
           base_id: "addon.minasona_twitch_extension.badge_generic",
           addon: "minasona_twitch_extension",
           title: "Base Minawan",
-          slot: 99,
           no_visibility: true,
-          image: defaultMinasonaMap.get('1392454998')?.url,
+          css: 'background-size: contain;background-repeat: no-repeat;',
         });
 
         this.badges.loadBadgeData("addon.minasona_twitch_extension.badge", {
           base_id: "addon.minasona_twitch_extension.badge",
           addon: "minasona_twitch_extension",
           title: "Minawan",
-          slot: 99,
           image: defaultMinasonaMap.get('1392454998')?.url,
+          css: 'background-size: contain;background-repeat: no-repeat;',
         });
 
         for (const [hash, { name, url }] of defaultMinasonaMap) {
@@ -215,7 +198,7 @@
         const fileEx = new RegExp("([\\w.-]+\\/)(\\w+)_(\\d+)x(\\d+)\\.(\\w+)", "i");
         const minawan = wanEx.exec(username)?.[0] ?? fileEx.exec((imageUrl ?? iconUrl))?.[2]
           ?.replace(new RegExp("minasona", "i"), username);// guessing minawan name
-        const title = isGeneric ? `Base Minawan\n(${defaultMinasonaMap.get(_userId)?.name})` : `${minawan ?? username}`;
+        const title = isGeneric ? `Minawan\n(${defaultMinasonaMap.get(_userId)?.name})` : `${minawan ?? username}`;
 
         if (!isGeneric) {
           this.badges.loadBadgeData(badgeId, {// visual dummy
@@ -227,7 +210,6 @@
         }
 
         const options = {
-          isGeneric: isGeneric,
           addon: "minasona_twitch_extension",
           badge_id: badgeId,
           base_id: baseId,

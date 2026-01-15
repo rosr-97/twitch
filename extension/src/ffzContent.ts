@@ -37,7 +37,6 @@
       switchCSSRule(true, '/*3*/.ffz-badge[data-badge^="addon.minasona_twitch_extension.badge"]', `
           min-width: ${event.data.FFZ_MINASONATWITCHEXTENSION_ICONSIZE}px; 
           height: ${event.data.FFZ_MINASONATWITCHEXTENSION_ICONSIZE}px; 
-          background-size: ${event.data.FFZ_MINASONATWITCHEXTENSION_ICONSIZE}px !important;
       `);
     }
   });
