@@ -26,11 +26,16 @@ minawanObjects.forEach((item) => {
   item.sprite = item.element.childNodes[0] as HTMLImageElement;
 });
 let minasonaMap: MinasonaStorage = {};
+const pettingImage = document.getElementById("petting-effect") as HTMLImageElement;
 
 document.addEventListener("DOMContentLoaded", spawnMinawan);
 async function spawnMinawan() {
   // get minasona map
-  const result: { minasonaMap?: MinasonaStorage } = await window.browser.storage.local.get(["minasonaMap"]);
+  const result: { minasonaMap?: MinasonaStorage; standardMinasonaUrls?: string[]; pettingUrl?: string } = await window.browser.storage.local.get([
+    "minasonaMap",
+    "standardMinasonaUrls",
+    "pettingUrl",
+  ]);
   if (!result) return;
   minasonaMap = result.minasonaMap || {};
 
@@ -46,6 +51,8 @@ async function spawnMinawan() {
     }
     startMinawanMovement(object);
   });
+
+  pettingImage.src = result.pettingUrl || "";
 }
 
 async function startMinawanMovement(minawanObject: MinawanObject) {

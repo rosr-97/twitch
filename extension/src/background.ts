@@ -13,6 +13,7 @@ const DEFAULT_MINASONAS = [
   "Minawan_Yellow.avif",
   "Minawan_Yellow.webp",
 ];
+const PETTING_GIF = "template.gif";
 
 // fetches the minasona list from the server and stores it into the local browser storage
 async function updateMinasonaMap() {
@@ -53,21 +54,29 @@ browser.runtime.onInstalled.addListener(async () => {
   const data: string[] = [];
 
   for (const asset of DEFAULT_MINASONAS) {
-    const url = browser.runtime.getURL(`assets/${asset}`);
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const reader = new FileReader();
-    await new Promise<void>((resolve) => {
-      reader.onload = () => {
-        data.push(reader.result as string);
-        resolve();
-      };
-      reader.readAsDataURL(blob);
-    });
+    data.push(await getDataURL(asset));
   }
 
-  browser.storage.local.set({ standardMinasonaUrls: data });
+  const pettingData = await getDataURL(PETTING_GIF);
+
+  browser.storage.local.set({ standardMinasonaUrls: data, pettingUrl: pettingData });
 });
+
+async function getDataURL(asset: string): Promise<string> {
+  const url = browser.runtime.getURL(`assets/${asset}`);
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const reader = new FileReader();
+  let result = "";
+  await new Promise<void>((resolve) => {
+    reader.onload = () => {
+      result = reader.result as string;
+      resolve();
+    };
+    reader.readAsDataURL(blob);
+  });
+  return result;
+}
 
 browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "refreshMinasonas") {

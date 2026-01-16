@@ -6,6 +6,7 @@ const ALLOWED_CHANNEL = "cerbervt";
 // the mapping of twitch usernames to minasona names and image urls
 let minasonaMap: MinasonaStorage = {};
 let defaultMinasonaMap: string[] = [];
+let pettingUrl: string;
 
 // the currently observed chat container and its observer
 let currentChatContainer: HTMLElement | null = null;
@@ -29,11 +30,16 @@ startSupervisor();
  * todo: get regularly not just once
  */
 async function fetchMinasonaMap() {
-  const result: { minasonaMap?: MinasonaStorage; standardMinasonaUrls?: string[] } = await browser.storage.local.get(["minasonaMap", "standardMinasonaUrls"]);
+  const result: { minasonaMap?: MinasonaStorage; standardMinasonaUrls?: string[]; pettingUrl?: string } = await browser.storage.local.get([
+    "minasonaMap",
+    "standardMinasonaUrls",
+    "pettingUrl",
+  ]);
 
   if (!result) return;
   minasonaMap = result.minasonaMap || {};
   defaultMinasonaMap = result.standardMinasonaUrls || [];
+  pettingUrl = result.pettingUrl;
 }
 
 /**
@@ -258,6 +264,12 @@ function getOrCreatePopover(): HTMLElement {
     picture.appendChild(source);
     picture.appendChild(img);
     popoverInstance.appendChild(picture);
+
+    const pettingImg = document.createElement("img");
+    pettingImg.classList.add("petting-effect", "loaded");
+    //pettingImg.style.display = ""; // todo none
+    pettingImg.src = pettingUrl;
+    popoverInstance.appendChild(pettingImg);
 
     document.body.append(popoverInstance);
 
