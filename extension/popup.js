@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const minasonaIcon = document.querySelector(".minasona-icon");
 
   const result = await browser.storage.sync.get(["showInOtherChats", "showForEveryone", "iconSize"]);
-  showInOtherChatsCheckbox.checked = result.showInOtherChats || false;
+  showInOtherChatsCheckbox.checked = result.showInOtherChats || true;
   showForEveryoneCheckbox.checked = result.showForEveryone || false;
 
   iconSize.value = result.iconSize || 32;

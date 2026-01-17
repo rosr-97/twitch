@@ -1,7 +1,7 @@
-import { MinasonaStorage } from "./types";
+import { MinasonaStorage, PalsonaEntry } from "./types";
 import browser from "webextension-polyfill";
 
-const ALLOWED_CHANNEL = "cerbervt";
+const MAIN_CHANNEL = "cerbervt";
 
 // the mapping of twitch usernames to minasona names and image urls
 let minasonaMap: MinasonaStorage = {};
@@ -47,7 +47,7 @@ async function applySettings() {
   ]);
 
   if (settingShowInOtherChats != result.showInOtherChats) {
-    settingShowInOtherChats = result.showInOtherChats || false;
+    settingShowInOtherChats = result.showInOtherChats || true;
     // reload observer
     if (currentChatContainer) {
       mountObserver(currentChatContainer);
@@ -123,23 +123,26 @@ function mountObserver(container: HTMLElement) {
 
   currentChatContainer = container;
 
+  // get current channel name from url
+  const path = window.location.pathname.toLowerCase();
+  const channelName = path.split("/").filter((seg) => seg.length > 0)[0];
+
   // if setting does not allow other channels -> check if channel is allowed
   if (!settingShowInOtherChats) {
     // check if the current twitch channel is supported
-    const path = window.location.pathname.toLowerCase();
-    if (ALLOWED_CHANNEL !== path.split("/").filter((seg) => seg.length > 0)[0]) {
+    if (channelName !== MAIN_CHANNEL) {
       return;
     }
   }
 
   // process existing children
-  Array.from(container.children).forEach((node) => processNode(node));
+  Array.from(container.children).forEach((node) => processNode(node, channelName));
 
   // create and start observer
   currentObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
-        processNode(node);
+        processNode(node, channelName);
       });
     });
   });
@@ -162,7 +165,7 @@ function disconnectObserver() {
  * Processes a newly added node in the chat container.
  * @param node The added node to process.
  */
-function processNode(node: Node) {
+function processNode(node: Node, channelName: string) {
   if (!(node instanceof HTMLElement)) return;
 
   // select any elements where the class contains the word "username" or "author"
@@ -185,7 +188,7 @@ function processNode(node: Node) {
     if (!settingShowForEveryone) return;
     // add uncustomized minasona
     const rnd = Math.floor((Math.random() * Object.keys(defaultMinasonaMap).length) / 2) * 2;
-    minasonaMap[username] = {
+    minasonaMap[username][channelName] = {
       iconUrl: defaultMinasonaMap[rnd],
       fallbackIconUrl: defaultMinasonaMap[rnd + 1],
       imageUrl: "",
@@ -193,12 +196,14 @@ function processNode(node: Node) {
     };
   }
 
+  const palsona: PalsonaEntry = getPrimaryPalsona(minasonaMap[username], channelName);
+
   // create icon
   const source = document.createElement("source");
-  source.srcset = minasonaMap[username].iconUrl;
+  source.srcset = palsona.iconUrl;
   source.type = "image/avif";
   const img = document.createElement("img");
-  img.src = minasonaMap[username].fallbackIconUrl;
+  img.src = palsona.fallbackIconUrl;
   img.loading = "lazy";
   img.classList.add("minasona-icon");
   img.style.height = `${settingIconSize || "32"}px`;
@@ -207,12 +212,12 @@ function processNode(node: Node) {
   icon.appendChild(source);
   icon.appendChild(img);
   // add popover on click if its not a default minasona
-  if (minasonaMap[username].imageUrl) {
+  if (palsona.imageUrl) {
     icon.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      showMinasonaPopover(e.target as HTMLElement, minasonaMap[username].imageUrl, minasonaMap[username].fallbackImageUrl);
+      showMinasonaPopover(e.target as HTMLElement, palsona.imageUrl, palsona.fallbackImageUrl);
     });
   }
 
@@ -233,6 +238,32 @@ function processNode(node: Node) {
     // insert after badge slot
     badgeSlot.append(iconContainer);
   }
+}
+
+/**
+ * determine which palsona to use on this channel
+ * if there is a minasona (main channel) image -> always use this one
+ * if there is no minasona (main channel) image -> check if currently watching a channel present in this users list or else use a random palsona from this user
+ * todo settings to show every palsona
+ *
+ * @param userElement
+ * @param currentChannelName
+ * @returns
+ */
+function getPrimaryPalsona(userElement: { [communityName: string]: PalsonaEntry }, currentChannelName: string): PalsonaEntry {
+  if (userElement[MAIN_CHANNEL]) return userElement[MAIN_CHANNEL];
+
+  if (userElement[currentChannelName]) return userElement[currentChannelName];
+
+  if (Object.entries(userElement).length == 0) {
+    return { iconUrl: "", fallbackIconUrl: "", imageUrl: "", fallbackImageUrl: "" };
+  }
+
+  // there is a palsona for this user but it's neither the main channel-sona nor the current channel-sona
+  // choose a random sona from this users palsona-list
+  const rnd = Math.floor(Math.random() * Object.entries(userElement).length);
+  const communities = Object.keys(userElement);
+  return userElement[communities[rnd]];
 }
 
 /**

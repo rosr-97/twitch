@@ -14,7 +14,9 @@ const DEFAULT_MINASONAS = [
   "Minawan_Yellow.webp",
 ];
 
-// fetches the minasona list from the server and stores it into the local browser storage
+/**
+ * Fetches the Palsona list from the server and stores it into the local browser storage.
+ */
 async function updateMinasonaMap() {
   try {
     const response = await fetch(`https://storage.googleapis.com/minawan-pics.firebasestorage.app/api.json`, {
@@ -33,10 +35,10 @@ async function updateMinasonaMap() {
           reducedData[m.twitchUsername] = {};
         }
         reducedData[m.twitchUsername][communityName] = {
-          iconUrl: encodeURI(m.avif64),
-          fallbackIconUrl: encodeURI(m.png64),
-          imageUrl: encodeURI(m.avif256),
-          fallbackImageUrl: encodeURI(m.png256),
+          iconUrl: encodeURI(m.avif64 || ""),
+          fallbackIconUrl: encodeURI(m.png64 || ""),
+          imageUrl: encodeURI(m.avif256 || ""),
+          fallbackImageUrl: encodeURI(m.png256 || ""),
         };
       });
     });

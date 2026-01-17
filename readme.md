@@ -25,11 +25,14 @@ https://addons.mozilla.org/de/firefox/addon/minasona-twitch-icons/
 
 ## Changelog
 
+### 1.4 (in development)
+- Support for multiple community Palsonas
+
 ### 1.3
 - You can now **set your own Minasona** on the website: https://minawan.me/ Login with Discord and make sure you have your Twitch account linked. Thanks Hoopywan!
 - More robust username detection
   - hopefully pronouns extension and FFZ should work Prayge
-- **VOD** support
+- **VOD** support (enable 'Show Minasonas in other Chats')
 - Larger onclick images
 
 ### 1.2
