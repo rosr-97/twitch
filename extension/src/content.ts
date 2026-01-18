@@ -9,6 +9,9 @@ let defaultMinasonaMap: string[] = [];
 // the currently observed chat container and its observer
 let currentChatContainer: HTMLElement | null = null;
 let currentObserver: MutationObserver | null = null;
+// the user list for the current chat with the current settings
+// this list is used, so we don't have to recalculate which palsona to use each time a user chats
+let currentPalsonaList: { [username: string]: PalsonaEntry[] } = {};
 
 // the popover showing the minasona image when clicking the icon
 let popoverInstance: HTMLElement = null;
@@ -31,6 +34,8 @@ async function applySettings() {
   const result: { showInOtherChats?: boolean; showForEveryone?: boolean; showOtherPalsonas?: boolean; showAllPalsonas?: boolean; iconSize?: string } =
     await browser.storage.sync.get(["showInOtherChats", "showForEveryone", "showOtherPalsonas", "showAllPalsonas", "iconSize"]);
 
+  currentPalsonaList = {};
+
   if (settingShowInOtherChats != result.showInOtherChats) {
     settingShowInOtherChats = result.showInOtherChats ?? true;
     // reload observer
@@ -42,7 +47,6 @@ async function applySettings() {
   if (settingShowForEveryone != result.showForEveryone) {
     settingShowForEveryone = result.showForEveryone ?? false;
     if (!settingShowForEveryone) {
-      minasonaMap = {};
       fetchMinasonaMap();
     }
   }
@@ -200,8 +204,34 @@ function processNode(node: Node, channelName: string) {
   const username = usernameElement.innerText.toLowerCase();
   if (!username) return;
 
-  // this array is used to store all Palsona entries of a user
-  // the order is the priority
+  if (!currentPalsonaList[username]) {
+    // calculate palsonas to display for this user based on current channel and settings
+    currentPalsonaList[username] = createPalsonaEntryList(username, channelName);
+  }
+
+  // create icon container
+  const iconContainer = document.createElement("div");
+  iconContainer.classList.add("minasona-icon-container");
+
+  for (const ps of currentPalsonaList[username]) {
+    const icon = createPalsonaIcon(ps);
+    iconContainer.append(icon);
+  }
+
+  // get badge slot to place icon container there if present
+  // this is needed to preserve usernames containing color gradients and also the correct display of the pronouns extension
+  const badgeSlot = node.querySelector<HTMLElement>(".chat-line__message--badges, .seventv-chat-user-badge-list");
+  if (!badgeSlot && usernameElement) {
+    // just prepend iconContainer to name
+    usernameElement.prepend(iconContainer);
+  } else if (badgeSlot) {
+    // insert after badge slot
+    badgeSlot.append(iconContainer);
+  }
+}
+
+function createPalsonaEntryList(username: string, channelName: string): PalsonaEntry[] {
+  console.log(`Creating palsona list for ${username}`);
   let palsonas: PalsonaEntry[] = [];
 
   if (settingShowOtherPalsonas) {
@@ -228,47 +258,34 @@ function processNode(node: Node, channelName: string) {
     palsonas = palsonas[0] ? [palsonas[0]] : [];
   }
 
-  // create icon container
-  const iconContainer = document.createElement("div");
-  iconContainer.classList.add("minasona-icon-container");
+  return palsonas;
+}
 
-  for (const ps of palsonas) {
-    // create icon
-    const source = document.createElement("source");
-    source.srcset = ps.iconUrl;
-    source.type = "image/avif";
-    const img = document.createElement("img");
-    img.src = ps.fallbackIconUrl;
-    img.loading = "lazy";
-    img.classList.add("minasona-icon");
-    img.style.height = `${settingIconSize || "32"}px`;
+function createPalsonaIcon(ps: PalsonaEntry): HTMLPictureElement {
+  const source = document.createElement("source");
+  source.srcset = ps.iconUrl;
+  source.type = "image/avif";
 
-    const icon = document.createElement("picture");
-    icon.appendChild(source);
-    icon.appendChild(img);
-    // add popover on click if its not a default minasona
-    if (ps.imageUrl) {
-      icon.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+  const img = document.createElement("img");
+  img.src = ps.fallbackIconUrl;
+  img.loading = "lazy";
+  img.classList.add("minasona-icon");
+  img.style.height = `${settingIconSize || "32"}px`;
 
-        showMinasonaPopover(e.target as HTMLElement, ps.imageUrl, ps.fallbackImageUrl);
-      });
-    }
+  const icon = document.createElement("picture");
+  icon.appendChild(source);
+  icon.appendChild(img);
+  // add popover on click if its not a default minasona
+  if (ps.imageUrl) {
+    icon.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-    iconContainer.append(icon);
+      showMinasonaPopover(e.target as HTMLElement, ps.imageUrl, ps.fallbackImageUrl);
+    });
   }
-  // get badge slot to place icon container there if present
-  // this is needed to preserve usernames containing color gradients and also the correct display of the pronouns extension
-  const badgeSlot = node.querySelector<HTMLElement>(".chat-line__message--badges, .seventv-chat-user-badge-list");
 
-  if (!badgeSlot && usernameElement) {
-    // just prepend iconContainer to name
-    usernameElement.prepend(iconContainer);
-  } else if (badgeSlot) {
-    // insert after badge slot
-    badgeSlot.append(iconContainer);
-  }
+  return icon;
 }
 
 /**
