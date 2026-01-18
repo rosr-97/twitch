@@ -45,3 +45,7 @@ https://addons.mozilla.org/de/firefox/addon/minasona-twitch-icons/
 ### 1.0
 
 - Extension working for chromium based browsers
+
+## Docs
+
+todo

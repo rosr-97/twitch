@@ -1,7 +1,6 @@
+import { MAIN_CHANNEL } from "./config";
 import { MinasonaStorage, PalsonaEntry } from "./types";
 import browser from "webextension-polyfill";
-
-const MAIN_CHANNEL = "cerbervt";
 
 // the mapping of twitch usernames to minasona names and image urls
 let minasonaMap: MinasonaStorage = {};
@@ -14,9 +13,11 @@ let currentObserver: MutationObserver | null = null;
 // the popover showing the minasona image when clicking the icon
 let popoverInstance: HTMLElement = null;
 
-// settings
-let settingShowInOtherChats = false;
+// settings - initialize with defaults
+let settingShowInOtherChats = true;
 let settingShowForEveryone = false;
+let settingShowOtherPalsonas = true;
+let settingShowAllPalsonas = false;
 let settingIconSize = "32";
 
 applySettings();
@@ -24,30 +25,14 @@ fetchMinasonaMap();
 startSupervisor();
 
 /**
- * Gets the minasona mapping from browser storage and starts the supervisor.
- * The mapping is set by the background script and updated once per hour.
- * todo: get regularly not just once
- */
-async function fetchMinasonaMap() {
-  const result: { minasonaMap?: MinasonaStorage; standardMinasonaUrls?: string[] } = await browser.storage.local.get(["minasonaMap", "standardMinasonaUrls"]);
-
-  if (!result) return;
-  minasonaMap = result.minasonaMap || {};
-  defaultMinasonaMap = result.standardMinasonaUrls || [];
-}
-
-/**
  * Fetches settings from the browsers storage and applies them to the local variables.
  */
 async function applySettings() {
-  const result: { showInOtherChats?: boolean; showForEveryone?: boolean; iconSize?: string } = await browser.storage.sync.get([
-    "showInOtherChats",
-    "showForEveryone",
-    "iconSize",
-  ]);
+  const result: { showInOtherChats?: boolean; showForEveryone?: boolean; showOtherPalsonas?: boolean; showAllPalsonas?: boolean; iconSize?: string } =
+    await browser.storage.sync.get(["showInOtherChats", "showForEveryone", "showOtherPalsonas", "showAllPalsonas", "iconSize"]);
 
   if (settingShowInOtherChats != result.showInOtherChats) {
-    settingShowInOtherChats = result.showInOtherChats || true;
+    settingShowInOtherChats = result.showInOtherChats ?? true;
     // reload observer
     if (currentChatContainer) {
       mountObserver(currentChatContainer);
@@ -55,11 +40,19 @@ async function applySettings() {
   }
 
   if (settingShowForEveryone != result.showForEveryone) {
-    settingShowForEveryone = result.showForEveryone || false;
+    settingShowForEveryone = result.showForEveryone ?? false;
     if (!settingShowForEveryone) {
       minasonaMap = {};
       fetchMinasonaMap();
     }
+  }
+
+  if (settingShowOtherPalsonas != result.showOtherPalsonas) {
+    settingShowOtherPalsonas = result.showOtherPalsonas ?? true;
+  }
+
+  if (settingShowAllPalsonas != result.showAllPalsonas) {
+    settingShowAllPalsonas = result.showAllPalsonas ?? false;
   }
 
   if (settingIconSize != result.iconSize) {
@@ -74,18 +67,28 @@ browser.storage.onChanged.addListener((_changes, namespace) => {
 });
 
 /**
+ * Gets the minasona mapping from browser storage and starts the supervisor.
+ * The mapping is set by the background script and updated once per hour.
+ */
+async function fetchMinasonaMap() {
+  const result: { minasonaMap?: MinasonaStorage; standardMinasonaUrls?: string[] } = await browser.storage.local.get(["minasonaMap", "standardMinasonaUrls"]);
+
+  if (!result) return;
+  minasonaMap = result.minasonaMap || {};
+  defaultMinasonaMap = result.standardMinasonaUrls || [];
+}
+
+/**
  * Starts the supervisor that checks for chat container changes every 5 seconds.
  * When a new chat container is detected, it mounts a new observer on it.
  * Only call this function once.
  */
 function startSupervisor() {
   setInterval(() => {
-    // get native and 7tv chat containers
-    const nativeChatContainer = document.querySelector<HTMLElement>(".chat-scrollable-area__message-container");
-    const sevenTvChatContainer = document.querySelector<HTMLElement>(".seventv-chat-list");
-    const vodChatContainer = document.querySelector<HTMLElement>('ul[class^="InjectLayout-sc"]');
+    // get native, 7tv and VOD chat containers
 
     // seven tv has priority
+    const sevenTvChatContainer = document.querySelector<HTMLElement>(".seventv-chat-list");
     if (sevenTvChatContainer) {
       if (currentChatContainer !== sevenTvChatContainer) {
         mountObserver(sevenTvChatContainer);
@@ -93,6 +96,7 @@ function startSupervisor() {
       return;
     }
 
+    const nativeChatContainer = document.querySelector<HTMLElement>(".chat-scrollable-area__message-container");
     if (nativeChatContainer) {
       if (currentChatContainer !== nativeChatContainer) {
         mountObserver(nativeChatContainer);
@@ -100,6 +104,7 @@ function startSupervisor() {
       return;
     }
 
+    const vodChatContainer = document.querySelector<HTMLElement>('ul[class^="InjectLayout-sc"]');
     if (vodChatContainer) {
       if (currentChatContainer !== vodChatContainer) {
         mountObserver(vodChatContainer);
@@ -162,78 +167,104 @@ function disconnectObserver() {
 }
 
 /**
- * Processes a newly added node in the chat container.
+ * Extracts the username element from a chat message element.
+ * @param node The chat message element.
+ * @returns The username element.
+ */
+function getUsernameElement(node: HTMLElement): HTMLElement {
+  // select any elements where the class contains the word "username" or "author"
+  // this is most likely the element the username is in, regardless of other installed addons
+  const usernameElement = node.querySelector<HTMLElement>('[class*="username"], [class*="author"]');
+  if (!usernameElement) return;
+  // check if there's another username element inside the detected element
+  // on native this is important to select only the name and not the element containing badges + name
+  const innerUsernameEl = usernameElement.querySelector<HTMLElement>('[class*="username"]');
+
+  return innerUsernameEl || usernameElement;
+}
+
+/**
+ * Processes a node in the chat container.
+ * This function checks the username of the author and adds the icon(s) if criteria are met.
  * @param node The added node to process.
  */
 function processNode(node: Node, channelName: string) {
   if (!(node instanceof HTMLElement)) return;
 
-  // select any elements where the class contains the word "username" or "author"
-  // this is most likely the element the username is in
-  const usernameElement = node.querySelector<HTMLElement>('[class*="username"], [class*="author"]');
-  if (!usernameElement) return;
-  // check if there's another username element inside the detected element
-  // on native this is important to select only the name and not the element containing badges + name
-  let innerUsernameEl = usernameElement.querySelector<HTMLElement>('[class*="username"]');
-  innerUsernameEl = innerUsernameEl || usernameElement;
-
-  // no username element found
-  if (!innerUsernameEl) return;
   // minasona-icon already appended
   if (node.querySelector<HTMLElement>(".minasona-icon")) return;
 
-  const username = innerUsernameEl.innerText.toLowerCase();
-  // username not in existing minasonas
-  if (!minasonaMap[username]) {
-    if (!settingShowForEveryone) return;
-    // add uncustomized minasona
-    const rnd = Math.floor((Math.random() * Object.keys(defaultMinasonaMap).length) / 2) * 2;
-    minasonaMap[username][channelName] = {
-      iconUrl: defaultMinasonaMap[rnd],
-      fallbackIconUrl: defaultMinasonaMap[rnd + 1],
-      imageUrl: "",
-      fallbackImageUrl: "",
-    };
+  // get username
+  const usernameElement = getUsernameElement(node);
+  if (!usernameElement) return;
+  const username = usernameElement.innerText.toLowerCase();
+  if (!username) return;
+
+  // this array is used to store all Palsona entries of a user
+  // the order is the priority
+  let palsonas: PalsonaEntry[] = [];
+
+  if (settingShowOtherPalsonas) {
+    palsonas = getPalsonaPriorityList(minasonaMap[username], channelName);
+  } else {
+    palsonas = minasonaMap[username][MAIN_CHANNEL] ? [minasonaMap[username][MAIN_CHANNEL]] : [];
   }
 
-  const palsona: PalsonaEntry = getPrimaryPalsona(minasonaMap[username], channelName);
-
-  // create icon
-  const source = document.createElement("source");
-  source.srcset = palsona.iconUrl;
-  source.type = "image/avif";
-  const img = document.createElement("img");
-  img.src = palsona.fallbackIconUrl;
-  img.loading = "lazy";
-  img.classList.add("minasona-icon");
-  img.style.height = `${settingIconSize || "32"}px`;
-
-  const icon = document.createElement("picture");
-  icon.appendChild(source);
-  icon.appendChild(img);
-  // add popover on click if its not a default minasona
-  if (palsona.imageUrl) {
-    icon.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      showMinasonaPopover(e.target as HTMLElement, palsona.imageUrl, palsona.fallbackImageUrl);
-    });
+  if (settingShowForEveryone) {
+    if (palsonas.length == 0) {
+      // user has no palsonas
+      const rnd = Math.floor((Math.random() * Object.keys(defaultMinasonaMap).length) / 2) * 2;
+      palsonas = [
+        {
+          iconUrl: defaultMinasonaMap[rnd],
+          fallbackIconUrl: defaultMinasonaMap[rnd + 1],
+          imageUrl: "",
+          fallbackImageUrl: "",
+        },
+      ];
+    }
+  }
+  if (!settingShowAllPalsonas) {
+    palsonas = palsonas[0] ? [palsonas[0]] : [];
   }
 
   // create icon container
   const iconContainer = document.createElement("div");
   iconContainer.classList.add("minasona-icon-container");
-  iconContainer.title = "Minasona";
-  iconContainer.append(icon);
 
-  // get badge slot to place icon there if present
+  for (const ps of palsonas) {
+    // create icon
+    const source = document.createElement("source");
+    source.srcset = ps.iconUrl;
+    source.type = "image/avif";
+    const img = document.createElement("img");
+    img.src = ps.fallbackIconUrl;
+    img.loading = "lazy";
+    img.classList.add("minasona-icon");
+    img.style.height = `${settingIconSize || "32"}px`;
+
+    const icon = document.createElement("picture");
+    icon.appendChild(source);
+    icon.appendChild(img);
+    // add popover on click if its not a default minasona
+    if (ps.imageUrl) {
+      icon.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        showMinasonaPopover(e.target as HTMLElement, ps.imageUrl, ps.fallbackImageUrl);
+      });
+    }
+
+    iconContainer.append(icon);
+  }
+  // get badge slot to place icon container there if present
   // this is needed to preserve usernames containing color gradients and also the correct display of the pronouns extension
   const badgeSlot = node.querySelector<HTMLElement>(".chat-line__message--badges, .seventv-chat-user-badge-list");
 
-  if (!badgeSlot && innerUsernameEl) {
+  if (!badgeSlot && usernameElement) {
     // just prepend iconContainer to name
-    innerUsernameEl.prepend(iconContainer);
+    usernameElement.prepend(iconContainer);
   } else if (badgeSlot) {
     // insert after badge slot
     badgeSlot.append(iconContainer);
@@ -241,29 +272,36 @@ function processNode(node: Node, channelName: string) {
 }
 
 /**
- * determine which palsona to use on this channel
- * if there is a minasona (main channel) image -> always use this one
- * if there is no minasona (main channel) image -> check if currently watching a channel present in this users list or else use a random palsona from this user
- * todo settings to show every palsona
+ * determine which palsona to use for this user and channel
+ * 1. Minasona (main channel) image
+ * 2. currently watched channel -sona
+ * after that all other palsonas present for this user
  *
- * @param userElement
- * @param currentChannelName
- * @returns
+ * @param userElement The user element from the Minasona storage.
+ * @param currentChannelName The currently watched channel name.
+ * @returns An array of PalsonaEntrys representing the priority of display.
  */
-function getPrimaryPalsona(userElement: { [communityName: string]: PalsonaEntry }, currentChannelName: string): PalsonaEntry {
-  if (userElement[MAIN_CHANNEL]) return userElement[MAIN_CHANNEL];
-
-  if (userElement[currentChannelName]) return userElement[currentChannelName];
-
-  if (Object.entries(userElement).length == 0) {
-    return { iconUrl: "", fallbackIconUrl: "", imageUrl: "", fallbackImageUrl: "" };
+function getPalsonaPriorityList(userElement: { [communityName: string]: PalsonaEntry }, currentChannelName: string): PalsonaEntry[] {
+  if (!userElement || Object.entries(userElement).length == 0) {
+    return [{ iconUrl: "", fallbackIconUrl: "", imageUrl: "", fallbackImageUrl: "" }];
   }
 
-  // there is a palsona for this user but it's neither the main channel-sona nor the current channel-sona
-  // choose a random sona from this users palsona-list
-  const rnd = Math.floor(Math.random() * Object.entries(userElement).length);
-  const communities = Object.keys(userElement);
-  return userElement[communities[rnd]];
+  const palsonaPrioList: PalsonaEntry[] = [];
+  if (userElement[MAIN_CHANNEL]) {
+    palsonaPrioList.push(userElement[MAIN_CHANNEL]);
+  }
+
+  if (userElement[currentChannelName]) {
+    palsonaPrioList.push(userElement[currentChannelName]);
+  }
+
+  for (const [communityName, entry] of Object.entries(userElement)) {
+    if (communityName == MAIN_CHANNEL || communityName == currentChannelName) {
+      continue;
+    }
+    palsonaPrioList.push(entry);
+  }
+  return palsonaPrioList;
 }
 
 /**
