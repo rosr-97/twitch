@@ -209,6 +209,10 @@ function processNode(node: Node, channelName: string) {
     currentPalsonaList[username] = createPalsonaEntryList(username, channelName);
   }
 
+  if (currentPalsonaList[username].length == 0) {
+    return;
+  }
+
   // create icon container
   const iconContainer = document.createElement("div");
   iconContainer.classList.add("minasona-icon-container");
@@ -311,7 +315,7 @@ function createPalsonaIcon(ps: PalsonaEntry): HTMLPictureElement {
  */
 function getPalsonaPriorityList(userElement: { [communityName: string]: PalsonaEntry }, currentChannelName: string): PalsonaEntry[] {
   if (!userElement || Object.entries(userElement).length == 0) {
-    return [{ iconUrl: "", fallbackIconUrl: "", imageUrl: "", fallbackImageUrl: "" }];
+    return [];
   }
 
   const palsonaPrioList: PalsonaEntry[] = [];
