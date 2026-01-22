@@ -34,8 +34,6 @@ async function applySettings() {
   const result: { showInOtherChats?: boolean; showForEveryone?: boolean; showOtherPalsonas?: boolean; showAllPalsonas?: boolean; iconSize?: string } =
     await browser.storage.sync.get(["showInOtherChats", "showForEveryone", "showOtherPalsonas", "showAllPalsonas", "iconSize"]);
 
-  currentPalsonaList = {};
-
   if (settingShowInOtherChats != result.showInOtherChats) {
     settingShowInOtherChats = result.showInOtherChats ?? true;
     // reload observer
@@ -46,9 +44,6 @@ async function applySettings() {
 
   if (settingShowForEveryone != result.showForEveryone) {
     settingShowForEveryone = result.showForEveryone ?? false;
-    if (!settingShowForEveryone) {
-      fetchMinasonaMap();
-    }
   }
 
   if (settingShowOtherPalsonas != result.showOtherPalsonas) {
@@ -62,6 +57,7 @@ async function applySettings() {
   if (settingIconSize != result.iconSize) {
     settingIconSize = result.iconSize || "32";
   }
+  currentPalsonaList = {};
 }
 // listen for settings changes
 browser.storage.onChanged.addListener((_changes, namespace) => {
