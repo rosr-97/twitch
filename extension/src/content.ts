@@ -20,6 +20,23 @@ let settingShowForEveryone = false;
 let settingShowOtherPalsonas = true;
 let settingShowAllPalsonas = false;
 let settingIconSize = "32";
+let isFrankerFaceZReady = false;
+
+window.addEventListener('message', (event) => {
+  if (event.source !== window) return;
+
+  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_READY === 'boolean')
+    isFrankerFaceZReady = event.data?.FFZ_MINASONATWITCHEXTENSION_READY;
+
+  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE === 'boolean')
+    browser.storage.sync.set({ showInOtherChats: event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE });
+
+  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN === 'boolean')
+    browser.storage.sync.set({ showForEveryone: event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN });
+
+  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE === 'string')
+    browser.storage.sync.set({ iconSize: event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE });
+});
 
 applySettings();
 fetchMinasonaMap();
@@ -56,6 +73,15 @@ async function applySettings() {
     settingIconSize = result.iconSize || "32";
   }
 
+  const isCurrentChannelAllowed: boolean = window.location.pathname.toLowerCase()
+    .split("/").filter((seg) => seg.length > 0)[0] === ALLOWED_CHANNEL;
+  const options = {
+    FFZ_MINASONATWITCHEXTENSION_SHOWINOTHERCHATS: settingShowInOtherChats,
+    FFZ_MINASONATWITCHEXTENSION_ISCURRENTCHANNELALLOWED: isCurrentChannelAllowed,
+    FFZ_MINASONATWITCHEXTENSION_SHOWFOREVERYONE: settingShowForEveryone,
+    FFZ_MINASONATWITCHEXTENSION_ICONSIZE: settingIconSize,
+  };
+  window.postMessage(options);
   // reset current lookup list because settings changed and it needs to be regenerated
   currentPalsonaList = {};
 }

@@ -9,8 +9,13 @@
   "content_scripts": [
     {
       "matches": ["https://*.twitch.tv/*"],
-      "js": ["content.js"],
+      "js": ["content.js", "ffzContent.js"],
       "css": ["style.css"]
+    },
+    {
+      "matches": ["https://*.twitch.tv/*"],
+      "js": ["ffzIntegration.js"],
+      "world": "MAIN"
     }
   ],
   "background": {
