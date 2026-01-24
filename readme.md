@@ -25,11 +25,19 @@ https://addons.mozilla.org/de/firefox/addon/minasona-twitch-icons/
 
 ## Changelog
 
+### 1.4 (in development)
+- Supports Palsonas from multiple communities
+  - The display of a Palsona for a user happens using the following priorities:
+  1. Minawan
+  2. Currently watched channel Palsona
+  3. Other channel Palsonas...
+  4. Default Minasona (if checked in the settings)
+
 ### 1.3
 - You can now **set your own Minasona** on the website: https://minawan.me/ Login with Discord and make sure you have your Twitch account linked. Thanks Hoopywan!
 - More robust username detection
   - hopefully pronouns extension and FFZ should work Prayge
-- **VOD** support
+- **VOD** support (enable 'Show Minasonas in other Chats')
 - Larger onclick images
 
 ### 1.2
@@ -42,3 +50,43 @@ https://addons.mozilla.org/de/firefox/addon/minasona-twitch-icons/
 ### 1.0
 
 - Extension working for chromium based browsers
+
+## Docs
+
+### Building the extension
+
+1. Install dependencies:
+```console
+cd extension
+npm install
+```
+
+2. Build the extension (chromium):
+```console
+node build.js chrome
+```
+### or
+2. Build the extension (firefox):
+```console
+node build.js firefox
+```
+
+3. You can find the files for the extension inside `dist/`.
+
+### Structure of the project
+
+- `background.ts` is the background script of the extension. It is used to fetch the user list from the API and store it in the local browser storage.
+- `content.ts` is the frontend script. It can interact with the web page and is used to read the usernames in the chat and create and insert the corresponding icons.
+- `popup.html` / `popup.js` is the popup displayed when opening the extension settings. The html handles the display of the popup while the js file stores the settings in the local browser storage.
+
+### Porting the extension
+
+1. Go to `config.ts` and set your communities main channel. This has to be the channel name from the URL of the channel.
+```typescript
+export const MAIN_CHANNEL = "cerbervt";
+```
+
+2. Use `popup.html` to change the appearance of the settings page. You should alter the text and CSS to match the theme of your community.<br/>
+_Feel free to change the whole page if you feel like but keep in mind, if the IDs of the input elements are changed, you need to change them in `popup.js` as well._
+
+3. Decide how you want to handle the setting "Show Minasonas for everywan". Right now this works by inserting a random minasona from `assets/` for users without a Minasona / any other Palsona (depending on settings). The background script parses the images into data URLs which are then stored in the local browser storage. You can exchange the images of this folder if you want to use this feature, however you need to change the filenames in `background.ts` as well. **I made it so two consecutive files always belong together with _.avif_ being the standard and the other one as a fallback. Change this in the function _createPalsonaEntryList( )_ in `content.ts` if you don't want it.**
