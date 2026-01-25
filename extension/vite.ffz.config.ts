@@ -5,7 +5,6 @@ export default defineConfig({
     outDir: "dist",
     rollupOptions: {
       input: {
-        ffzContent: "src/ffzContent.ts",
         ffzIntegration: "src/ffzIntegration.ts",
       },
       output: {

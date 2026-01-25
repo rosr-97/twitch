@@ -24,18 +24,8 @@ let isFrankerFaceZReady = false;
 
 window.addEventListener('message', (event) => {
   if (event.source !== window) return;
-
-  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_READY === 'boolean')
-    isFrankerFaceZReady = event.data?.FFZ_MINASONATWITCHEXTENSION_READY;
-
-  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE === 'boolean')
-    browser.storage.sync.set({ showInOtherChats: event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWHERE });
-
-  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN === 'boolean')
-    browser.storage.sync.set({ showForEveryone: event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_EVERYWAN });
-
-  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE === 'string')
-    browser.storage.sync.set({ iconSize: event.data?.FFZ_MINASONATWITCHEXTENSION_SETTING_SIZE });
+  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_READY !== 'boolean') return;
+  isFrankerFaceZReady = event.data?.FFZ_MINASONATWITCHEXTENSION_READY;
 });
 
 applySettings();
@@ -73,15 +63,7 @@ async function applySettings() {
     settingIconSize = result.iconSize || "32";
   }
 
-  const isCurrentChannelAllowed: boolean = window.location.pathname.toLowerCase()
-    .split("/").filter((seg) => seg.length > 0)[0] === ALLOWED_CHANNEL;
-  const options = {
-    FFZ_MINASONATWITCHEXTENSION_SHOWINOTHERCHATS: settingShowInOtherChats,
-    FFZ_MINASONATWITCHEXTENSION_ISCURRENTCHANNELALLOWED: isCurrentChannelAllowed,
-    FFZ_MINASONATWITCHEXTENSION_SHOWFOREVERYONE: settingShowForEveryone,
-    FFZ_MINASONATWITCHEXTENSION_ICONSIZE: settingIconSize,
-  };
-  window.postMessage(options);
+  window.postMessage({ FFZ_MINASONATWITCHEXTENSION_REFRESH: true });// refreshes the badges
   // reset current lookup list because settings changed and it needs to be regenerated
   currentPalsonaList = {};
 }
@@ -102,6 +84,9 @@ async function fetchMinasonaMap() {
   if (!result) return;
   minasonaMap = result.minasonaMap || {};
   defaultMinasonaMap = result.standardMinasonaUrls || [];
+
+  for (const minasona of defaultMinasonaMap)
+    window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDDEFAULTMINASONA: minasona });
 }
 
 /**
@@ -237,9 +222,36 @@ function processNode(node: Node, channelName: string) {
   const iconContainer = document.createElement("div");
   iconContainer.classList.add("minasona-icon-container");
 
+  let index = 0;
   for (const ps of currentPalsonaList[username]) {
     const icon = createPalsonaIcon(ps);
     iconContainer.append(icon);
+
+    if (isFrankerFaceZReady) {
+      const isGeneric = defaultMinasonaMap.includes(ps.iconUrl)
+        || defaultMinasonaMap.includes(ps.imageUrl);
+      const FFZ_MINASONATWITCHEXTENSION_BADGE = {
+        index: index++,
+        userId: node.querySelector<HTMLElement>("[data-user-id]")?.dataset?.userId ?? 0,
+        iconUrl: ps.iconUrl,
+        imageUrl: ps.imageUrl,
+        username: usernameElement.innerText,
+        isGeneric: isGeneric,
+        iconSize: settingIconSize
+      };
+
+      node.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (target.dataset?.badge !== "addon.minasona_twitch_extension.badge") return;
+        e.preventDefault();
+        e.stopPropagation();
+        showMinasonaPopover(target, ps.imageUrl, ps.fallbackImageUrl);
+      });
+
+      // send badge blueprint to FFZ if available
+      window.postMessage({ FFZ_MINASONATWITCHEXTENSION_BADGE });
+      return;
+    }
   }
 
   displayMinasonaIconContainer(node, iconContainer, usernameElement);
@@ -259,7 +271,7 @@ function createPalsonaEntryList(username: string, channelName: string): PalsonaE
     palsonas = getPalsonaPriorityList(minasonaMap[username], channelName);
   } else {
     // otherwise just check for main channel palsona
-    palsonas = minasonaMap[username][MAIN_CHANNEL] ? [minasonaMap[username][MAIN_CHANNEL]] : [];
+    palsonas = minasonaMap[username]?.[MAIN_CHANNEL] ? [minasonaMap[username][MAIN_CHANNEL]] : [];
   }
 
   if (settingShowForEveryone && palsonas.length == 0) {
