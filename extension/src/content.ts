@@ -28,8 +28,18 @@ window.addEventListener('message', (event) => {
   isFrankerFaceZReady = event.data?.FFZ_MINASONATWITCHEXTENSION_READY;
 
   if (!isFrankerFaceZReady) return;
-  window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: { community: "minawan", icon: defaultMinasonaMap[4], generics: { ...defaultMinasonaMap } } });// adds the community
-  window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: { community: "wormpal" } });// adds the community
+  window.postMessage({
+    FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: {
+      community: "minawan", icon: defaultMinasonaMap?.[4], generics: [
+        defaultMinasonaMap[0] ?? defaultMinasonaMap[1],
+        defaultMinasonaMap[2] ?? defaultMinasonaMap[3],
+        defaultMinasonaMap[4] ?? defaultMinasonaMap[5],
+        defaultMinasonaMap[6] ?? defaultMinasonaMap[7],
+        defaultMinasonaMap[8] ?? defaultMinasonaMap[9],
+      ]
+    }
+  });// adds the community
+  window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: { community: "wormpal" } });
 });
 
 applySettings();
@@ -230,32 +240,30 @@ function processNode(node: Node, channelName: string) {
 
   if (isFrankerFaceZReady) {
     for (const ps of currentPalsonaList[username]) {
-      if (isFrankerFaceZReady) {
-        const communityEx = new RegExp('(\\w+\\/)(\\w+)\\/(\\w+)\\/(\\w+)_(\\d+)x(\\d+)\\.(\\w+)', "i");
-        const community = communityEx.exec(ps.iconUrl ?? ps.fallbackIconUrl ?? ps.imageUrl ?? ps.fallbackImageUrl)?.[2] ?? "minawan";
-        const isGeneric = defaultMinasonaMap.includes(ps.iconUrl)
-          || defaultMinasonaMap.includes(ps.imageUrl);
-        const FFZ_MINASONATWITCHEXTENSION_BADGE = {
-          userId: node.querySelector<HTMLElement>("[data-user-id]")?.dataset?.userId ?? 0,
-          iconUrl: ps.iconUrl ?? ps.fallbackIconUrl,
-          imageUrl: ps.imageUrl ?? ps.fallbackImageUrl,
-          username: usernameElement.innerText,
-          isGeneric: isGeneric,
-          iconSize: settingIconSize,
-          community: community
-        };
+      const communityEx = new RegExp('(\\w+\\/)(\\w+)\\/(\\w+)\\/(\\w+)_(\\d+)x(\\d+)\\.(\\w+)', "i");
+      const community = communityEx.exec(ps.iconUrl ?? ps.imageUrl)?.[2] ?? "minawan";
+      const isGeneric = defaultMinasonaMap.includes(ps.iconUrl)
+        || defaultMinasonaMap.includes(ps.imageUrl);
+      const FFZ_MINASONATWITCHEXTENSION_BADGE = {
+        userId: node.querySelector<HTMLElement>("[data-user-id]")?.dataset?.userId ?? 0,
+        iconUrl: ps.iconUrl,
+        imageUrl: ps.imageUrl,
+        username: usernameElement.innerText,
+        isGeneric: isGeneric,
+        iconSize: settingIconSize,
+        community: community
+      };
 
-        node.addEventListener("click", (e) => {
-          const target = e.target as HTMLElement;
-          if (target.dataset?.badge !== `addon.minasona_twitch_extension.badge_${community}`) return;
-          e.preventDefault();
-          e.stopPropagation();
-          showMinasonaPopover(target, ps.imageUrl, ps.fallbackImageUrl);
-        });
+      node.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (target.dataset?.badge !== `addon.minasona_twitch_extension.badge_${community}`) return;
+        e.preventDefault();
+        e.stopPropagation();
+        showMinasonaPopover(target, ps.imageUrl, ps.fallbackImageUrl);
+      });
 
-        // send badge blueprint to FFZ if available
-        window.postMessage({ FFZ_MINASONATWITCHEXTENSION_BADGE });
-      }
+      // send badge blueprint to FFZ if available
+      window.postMessage({ FFZ_MINASONATWITCHEXTENSION_BADGE });
     }
   }
   else {

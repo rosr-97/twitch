@@ -119,15 +119,7 @@ function addons_ready(event) {
           const defaultMap = Object.values(event.data.FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY.generics);
           for (const url of defaultMap) {
             const hash = getGenericHashCode(`${url}`);
-            const name = {
-              '2083528344': 'green',
-              '565463058': 'red',
-              '1392454998': 'purple',
-              '1607130226': 'yellow',
-              '-549969585': 'blue',
-            }[hash] ?? null;
-            if (community === 'minawan' && !name) continue;
-            this.registerGeneric(hash, community, name, `${url}`);
+            this.registerGeneric(hash, community, `${url}`);
           }
         }
 
@@ -163,7 +155,7 @@ function addons_ready(event) {
      * Registers a new generic for a community icon.
      * @param index The index of the palsona template to register.
      */
-    registerGeneric(hash: string, community: string, name: string, imageUrl: string) {
+    registerGeneric(hash: string, community: string, imageUrl: string) {
       const badgeId = `addon.minasona_twitch_extension.badge_${community}_generic-${hash}_undefined`;
       this.badges.loadBadgeData(badgeId, {
         base_id: `addon.minasona_twitch_extension.badge_${community}_generic`,
@@ -171,7 +163,6 @@ function addons_ready(event) {
         title: toTitleCase(`Base ${community}`),
         image: imageUrl,
         css: 'background-size: contain;background-repeat: no-repeat;',
-        tooltipExtra: () => `\n(${name})`,
       });
     }
 
@@ -204,20 +195,12 @@ function addons_ready(event) {
           tooltipExtra: () => `\n(${name})`,
         });
       }
-      
-      const genericName = {
-        '2083528344': 'green',
-        '565463058': 'red',
-        '1392454998': 'purple',
-        '1607130226': 'yellow',
-        '-549969585': 'blue',
-      }[_userId] ?? null;
 
       const options = {
         addon: "minasona_twitch_extension",
         badge_id: badgeId,
         base_id: baseId,
-        title: isGeneric ? `Minawan\n(${genericName})` : name,
+        title: isGeneric ? toTitleCase(`${community}`) : name,
         slot: 99 + this.communities.indexOf(community),
         image: iconUrl ?? imageUrl,
         urls: {
@@ -255,10 +238,10 @@ function addons_ready(event) {
  * Converts a string to title case.
  * @param {string} str - The string to convert.
  */
-function toTitleCase(str: string) {
-  return str.replace(/\w\S*/g, function (txt) {
-    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-  });
+function toTitleCase(text: string) {
+  const ex = new RegExp("\\w\\S*", "g");
+  const result = text.replace(ex, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+  return `${result}`;
 }
 
 /**
