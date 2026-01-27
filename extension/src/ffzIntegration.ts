@@ -10,23 +10,13 @@
     enabled: true,
     requires: [],
     addon: 'minasona_twitch_extension',
-    icon: 'data:image/avif;base64,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',
   };
+
+  let addOnIcon:string = undefined;
+  window.addEventListener('message', addOnIcon_callBack);
 
   let attempts = 0;
-  let current_callback = function (mutationsList: MutationRecord[], observer: MutationObserver) {
-    attempts++;
-    if (attempts % 10 === 0) {
-      observer.disconnect();
-      console.log(`Failed to initialize Minasona FFZ addon after ${attempts} attempts`);
-      return;
-    }
-    if (!document.head.querySelector('#ffz_script, #ffz-script')) return;// find the FFZ script before deciding to wait (script | extension)
-    current_callback = ffzObserver_callback;
-    observer.observe(document.body, { childList: true, subtree: true });
-    console.log(`Minasona FFZ addon initialized after ${attempts} attempts`);
-  };
-
+  let current_callback = ffzScriptObserver_callback;
   new MutationObserver((mutationsList: MutationRecord[], observer: MutationObserver) => {
     current_callback?.(mutationsList, observer);
   }).observe(document.head, { childList: true, subtree: true });
@@ -128,7 +118,7 @@
       registerTemplate(community: string, imageUrl: string) {
         const communityId = community.replace(/\s+/i, '_');
         const badgeId = `addon.${metadata.addon}.badge_${communityId}`;
-        
+
         this.communities.push(community);
         this.style.set(`template_${communityId}`,
           `.ffz--tab-container .ffz--menu-container [for^="addon.minasona_twitch_extension.badge"] .ffz-badge.ffz-tooltip[title="${toTitleCase(community)}"]:first-child { display: none; }`);
@@ -171,8 +161,8 @@
         const badgeId = `${baseId}-${_userId}`;
         if (this.users.get(badgeId) && !isGeneric) return;
 
-        const minawan = /.*(wan)$/i.exec(username)?.[0] ?? /([\w.-]+\/)(\w+)_(\d+)x(\d+)\.(\w+)/i.exec((imageUrl ?? iconUrl))?.[2]
-          ?.replace(/minasona/i, username);// guessing minawan name
+        const minawan = /^([\d_]+)?([A-Za-z_]+?(wan))([\d_-]+)?$/i.exec(username)?.[2]?.replace(/[\d_-]+/i, '')
+          ?? /([\w.-]+\/)(\w+)_(\d+)x(\d+)\.(\w+)/i.exec((imageUrl ?? iconUrl))?.[2]?.replace(/minasona/i, username);// guessing minawan name
         const name = community === 'minawan' ? `${minawan ?? username}` : `${username}`;
 
         if (!isGeneric) {
@@ -220,7 +210,7 @@
       }
     }
 
-    (MinasonaTwitchExtension as any).register(metadata.addon, metadata);
+    (MinasonaTwitchExtension as any).register(metadata.addon, { ...metadata, icon: addOnIcon });
   }
 
   /**
@@ -245,11 +235,6 @@
 
   /**
    * Called when the FrankerFaceZ addon is ready to be used.
-   * This function is a callback for a MutationObserver that is listening for the
-   * FrankerFaceZ script to be loaded into the page.
-   * When the script is found, this function is called and it sets up the
-   * FrankerFaceZ addon to listen for the ':ready' event.
-   * When the ':ready' event is triggered, the addons_ready function is called.
    * @param {MutationRecord[]} mutationsList - A list of mutations that triggered this callback.
    * @param {MutationObserver} observer - The MutationObserver that triggered this callback.
    */
@@ -258,5 +243,33 @@
     if (!FrankerFaceZ.instance?.addons) return;
     FrankerFaceZ.instance.addons.on(':ready', addons_ready);
     observer.disconnect();
+  }
+  
+  /**
+   * Called to search for the FrankerFaceZ script.
+   * @param {MutationRecord[]} mutationsList - A list of mutations that triggered this callback.
+   * @param {MutationObserver} observer - The MutationObserver that triggered this callback.
+   */
+  function ffzScriptObserver_callback(mutationsList: MutationRecord[], observer: MutationObserver) {
+    attempts++;
+    if (attempts % 10 === 0) {
+      observer.disconnect();
+      console.log(`Failed to initialize Minasona FFZ addon after ${attempts} attempts`);
+      return;
+    }
+    if (!document.head.querySelector('#ffz_script, #ffz-script')) return;// find the FFZ script before deciding to wait (script | extension)
+    current_callback = ffzObserver_callback;
+    observer.observe(document.body, { childList: true, subtree: true });
+    console.log(`Minasona FFZ addon initialized after ${attempts} attempts`);
+  }
+  
+  /**
+   * Outpost to parse the icon for the addon.
+   */
+  function addOnIcon_callBack(event) {
+    if (event.source !== window) return;
+    if (typeof event.data.FFZ_MINASONATWITCHEXTENSION_ADDONICON !== 'string') return;
+    addOnIcon = event.data.FFZ_MINASONATWITCHEXTENSION_ADDONICON;
+    window.removeEventListener('message', addOnIcon_callBack);
   }
 })();

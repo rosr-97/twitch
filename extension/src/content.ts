@@ -69,7 +69,7 @@ async function applySettings() {
   if (settingShowAllPalsonas != result.showAllPalsonas) {
     settingShowAllPalsonas = result.showAllPalsonas ?? false;
   }
-  
+
   if (settingIconSize != result.iconSize) {
     settingIconSize = result.iconSize || "32";
   }
@@ -96,6 +96,7 @@ async function fetchMinasonaMap() {
   if (!result) return;
   minasonaMap = result.minasonaMap || {};
   defaultMinasonaMap = result.standardMinasonaUrls || [];
+  window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDONICON: defaultMinasonaMap?.[4] });// pushes the ffz addon icon
 }
 
 /**
@@ -239,7 +240,7 @@ function processNode(node: Node, channelName: string) {
   if (isFrankerFaceZReady) {
     for (const ps of currentPalsonaList[username]) {
       const community = /(\w+)\/((\w+)(-backfill)?)\/((\w+)\/)?(\w+)_(\d+)x(\d+)\.(\w+)/i.exec(ps.iconUrl ?? ps.imageUrl)?.[3] ?? "minawan";// backfill counts
-      
+
       node.addEventListener("click", (e) => {
         const target = e.target as HTMLElement;
         if (target.dataset?.badge !== `addon.minasona_twitch_extension.badge_${community}`) return;
