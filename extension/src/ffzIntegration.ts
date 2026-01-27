@@ -76,9 +76,11 @@
           const iconUrl: string = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.iconUrl;
           const username: string = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.username;
           const community: string = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.community;
-          const iconSize: number = event.data.FFZ_MINASONATWITCHEXTENSION_BADGE.iconSize;
 
-          this.registerUserBadge(community, userId, username, imageUrl, iconUrl, iconSize, isGeneric);
+          if (!this.communities.includes(community))// register community if missing
+            this.registerTemplate(community, imageUrl ?? iconUrl);
+
+          this.registerUserBadge(community, userId, username, imageUrl, iconUrl, isGeneric);
         }).bind(this));
 
         window.addEventListener('message', ((event) => {
@@ -102,7 +104,6 @@
           const community = event.data.FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY.community;
           if (this.communities.includes(community)) return;
 
-          this.communities.push(community);
           if (event.data.FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY.generics) {// define generics
             const defaultMap = Object.values(event.data.FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY.generics);
             this.registerTemplate(`base ${community}`, defaultMap[0] as string);
@@ -115,7 +116,7 @@
 
           const imageUrl = event.data.FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY.icon;
           this.registerTemplate(community, imageUrl);
-        }))
+        }).bind(this));
 
         this.router.on(':route', this.updateBadges.bind(this));
       }
@@ -126,9 +127,11 @@
        */
       registerTemplate(community: string, imageUrl: string) {
         const communityId = community.replace(/\s+/i, '_');
+        const badgeId = `addon.${metadata.addon}.badge_${communityId}`;
+        
+        this.communities.push(community);
         this.style.set(`template_${communityId}`,
           `.ffz--tab-container .ffz--menu-container [for^="addon.minasona_twitch_extension.badge"] .ffz-badge.ffz-tooltip[title="${toTitleCase(community)}"]:first-child { display: none; }`);
-        const badgeId = `addon.${metadata.addon}.badge_${communityId}`;
         this.badges.loadBadgeData(badgeId, {
           base_id: badgeId,
           addon: metadata.addon,
@@ -157,7 +160,7 @@
       /**
        * Registers a new badge for a specific user.
        */
-      async registerUserBadge(community: string, userId: string, username: string, imageUrl: string, iconUrl: string, iconSize: number, isGeneric: boolean) {
+      async registerUserBadge(community: string, userId: string, username: string, imageUrl: string, iconUrl: string, isGeneric: boolean) {
         const baseId = `addon.${metadata.addon}.badge_${(isGeneric ? 'base_' : '')}${community}`;
         const user = this.chat.getUser(userId);
         if (user.getBadge(baseId) !== null) return;

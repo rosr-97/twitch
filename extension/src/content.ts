@@ -35,8 +35,8 @@ window.addEventListener('message', (event) => {
       generics: defaultMinasonaMap.filter((_, index) => index % 2 === 0)// generic badges
     }
   });// adds the community
-  window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: { community: "minyan" } });
-  window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: { community: "wormpal" } });
+  // window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: { community: "minyan", icon: undefined } });
+  // window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: { community: "wormpal", icon: undefined } });
 });
 
 applySettings();
