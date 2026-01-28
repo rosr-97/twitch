@@ -5,7 +5,7 @@ export default defineConfig({
     outDir: "dist",
     rollupOptions: {
       input: {
-        content: "popup.js",
+        content: "popup.ts",
       },
       output: {
         inlineDynamicImports: true,

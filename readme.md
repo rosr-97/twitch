@@ -21,7 +21,7 @@ https://microsoftedge.microsoft.com/addons/detail/minasona-twitch-icons/annkpdga
 [Download from chrome store](https://chromewebstore.google.com/detail/minasona-twitch-icons/paoappdblefbmihfcjbmcebhdgabfkib)
 
 ### Firefox v1.3
-https://addons.mozilla.org/de/firefox/addon/minasona-twitch-icons/
+https://addons.mozilla.org/firefox/addon/minasona-twitch-icons/
 
 ## Changelog
 

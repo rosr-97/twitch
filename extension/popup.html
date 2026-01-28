@@ -45,16 +45,34 @@
         gap: 16px;
         margin-left: auto;
         margin-right: auto;
+        font-size: 16px;
+        font-weight: 500;
+        line-height: 1.5;
+        color: #be185d;
       }
 
       .option-label {
         display: flex;
         gap: 12px;
         cursor: pointer;
-        font-size: 16px;
-        font-weight: 500;
-        line-height: 1.5;
-        color: #be185d;
+        align-items: center;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .palsona-manager {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #be185d;
+        border-radius: 8px;
+        padding: 2px;
+        gap: 2px;
+      }
+
+      .draggable-item {
+        padding: 6px;
+        border: 1px dashed #d946a6;
+        border-radius: 4px;
       }
 
       input[type="checkbox"] {
@@ -74,13 +92,20 @@
         border-radius: 8px;
         height: 80px;
         display: flex;
-        justify-content: center;
         align-items: center;
+        text-wrap-mode: nowrap;
       }
 
       .minasona-icon {
         height: 32px;
         display: inline-block;
+        vertical-align: middle;
+        margin-right: 4px;
+      }
+
+      .minasona-preview-icon {
+        height: 32px;
+        display: none;
         vertical-align: middle;
         margin-right: 4px;
       }
@@ -120,30 +145,51 @@
           <span>Show Minasonas in other Chats</span>
         </label>
 
-        <label class="option-label" title="Display default Minasonas for Minawan without a custom Minasona?">
-          <input type="checkbox" id="showForEveryone" />
-          <span>Show Minasonas for everywan</span>
-        </label>
+        <div id="palsona-manager" class="palsona-manager">
+          <div class="draggable-item" draggable="true" data-id="main-channel">
+            <label class="option-label" title="Minawan">
+              <input type="checkbox" id="main-channel" checked disabled />
+              <span><img class="minasona-icon" src="assets/Cerby_64x64.png" />Minasona</span>
+            </label>
+          </div>
+          <div class="draggable-item" draggable="true" data-id="current-channel">
+            <label class="option-label" title="Palsona for your currently watched channel">
+              <input type="checkbox" id="current-channel" />
+              <span><img class="minasona-icon" src="assets/wormpal.png" />Current Channel Palsona</span>
+            </label>
+          </div>
+          <div class="draggable-item" draggable="true" data-id="other-channels">
+            <label class="option-label" title="Palsonas for all other channels">
+              <input type="checkbox" id="other-channels" />
+              <span><img class="minasona-icon" src="assets/Ditto.png" />Other Palsonas</span>
+            </label>
+          </div>
+          <div class="draggable-item" draggable="true" data-id="default-minasona">
+            <label class="option-label" title="Display default Minasona as a fallback if the user has no other Palsonas">
+              <input type="checkbox" id="default-minasona" />
+              <span><img class="minasona-icon" src="assets/Minawan_Purple.webp" />Default Minasona</span>
+            </label>
+          </div>
+        </div>
 
-        <label class="option-label" title="Display Palsonas from other communities than Minawan?">
-          <input type="checkbox" id="showOtherPalsonas" />
-          <span>Show Palsonas from other communities</span>
-        </label>
-
-        <label class="option-label" title="Display every Palsona of a user?">
-          <input type="checkbox" id="showAllPalsonas" />
-          <span>Show all Palsonas</span>
+        <label class="option-label" title="Limit the amount of icons to display for a user">
+          <span>Limit</span>
+          <input type="range" id="palsonaAmount" min="1" max="3" value="2" />
+          <span id="amountLabel">2 Palsona(s)</span>
         </label>
 
         <label class="option-label">
-          <span>Size</span>
+          <span>Icon Size</span>
           <input type="range" id="iconSize" min="21" max="64" value="32" />
           <span id="rangeLabel">32 Pixels</span>
         </label>
       </div>
 
       <div class="twitch-preview">
-        <img class="minasona-icon" src="assets/Minawan_Purple.webp" /><span style="color: red; font-weight: 700">Minawan</span>: Cerber is cute mhm pass it on
+        <img class="minasona-preview-icon" />
+        <img class="minasona-preview-icon" />
+        <img class="minasona-preview-icon" />
+        <span style="color: red; font-weight: 700">Minawan</span>: Cerber is cute
       </div>
 
       <div class="spacer"></div>
