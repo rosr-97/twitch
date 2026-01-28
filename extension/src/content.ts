@@ -2,6 +2,10 @@ import { MAIN_CHANNEL } from "./config";
 import { showMinasonaPopover } from "./minasona-popover";
 import { MinasonaStorage, PalsonaEntry } from "./types";
 import browser from "webextension-polyfill";
+import { MinasonaFrankerFaceZAddonHelper } from "./ffzAddon";
+
+const ffzAddonSupport: MinasonaFrankerFaceZAddonHelper = new MinasonaFrankerFaceZAddonHelper();
+ffzAddonSupport.showMinasonaPopoverCallback ??= showMinasonaPopover;
 
 // the mapping of twitch usernames to minasona names and image urls
 let minasonaMap: MinasonaStorage = {};
@@ -20,27 +24,12 @@ let settingShowForEveryone = false;
 let settingShowOtherPalsonas = true;
 let settingShowAllPalsonas = false;
 let settingIconSize = "32";
-let isFrankerFaceZReady = false;
-
-window.addEventListener('message', (event) => {
-  if (event.source !== window) return;
-  if (typeof event.data?.FFZ_MINASONATWITCHEXTENSION_READY !== "boolean") return;
-  isFrankerFaceZReady = event.data?.FFZ_MINASONATWITCHEXTENSION_READY;
-
-  if (!isFrankerFaceZReady) return;
-  window.postMessage({
-    FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: {
-      community: "minawan",
-      icon: defaultMinasonaMap?.[4],// community icon
-      generics: defaultMinasonaMap.filter((_, index) => index % 2 === 0)// generic badges
-    }
-  });// adds the community
-  // window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: { community: "minyan", icon: undefined } });
-  // window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDCOMMUNITY: { community: "wormpal", icon: undefined } });
-});
 
 applySettings();
-fetchMinasonaMap();
+fetchMinasonaMap().then(() => {
+  ffzAddonSupport.setAddonIcon(defaultMinasonaMap?.[4]);
+  ffzAddonSupport.defaultCommunityMap.set("minawan", defaultMinasonaMap);
+});
 startSupervisor();
 
 /**
@@ -74,7 +63,7 @@ async function applySettings() {
     settingIconSize = result.iconSize || "32";
   }
   else // refresh badges but on size
-    window.postMessage({ FFZ_MINASONATWITCHEXTENSION_REFRESH: true });
+    ffzAddonSupport.refresh();
 
   // reset current lookup list because settings changed and it needs to be regenerated
   currentPalsonaList = {};
@@ -96,7 +85,6 @@ async function fetchMinasonaMap() {
   if (!result) return;
   minasonaMap = result.minasonaMap || {};
   defaultMinasonaMap = result.standardMinasonaUrls || [];
-  window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDONICON: defaultMinasonaMap?.[4] });// pushes the ffz addon icon
 }
 
 /**
@@ -235,41 +223,14 @@ function processNode(node: Node, channelName: string) {
   for (const ps of currentPalsonaList[username]) {
     const icon = createPalsonaIcon(ps);
     iconContainer.append(icon);
-  }
 
-  if (isFrankerFaceZReady) {
-    for (const ps of currentPalsonaList[username]) {
-      const community = /(\w+)\/((\w+)(-backfill)?)\/((\w+)\/)?(\w+)_(\d+)x(\d+)\.(\w+)/i.exec(ps.iconUrl ?? ps.imageUrl)?.[3] ?? "minawan";// backfill counts
-
-      node.addEventListener("click", (e) => {
-        const target = e.target as HTMLElement;
-        if (target.dataset?.badge !== `addon.minasona_twitch_extension.badge_${community}`) return;
-        e.preventDefault();
-        e.stopPropagation();
-        showMinasonaPopover(target, ps.imageUrl, ps.fallbackImageUrl);
-      });
-
-      const isGeneric = defaultMinasonaMap.includes(ps.iconUrl)
-        || defaultMinasonaMap.includes(ps.imageUrl);
-
-      // send badge blueprint to FFZ if available
-      window.postMessage({
-        FFZ_MINASONATWITCHEXTENSION_BADGE: {
-          userId: node.querySelector<HTMLElement>("[data-user-id]")?.dataset?.userId ?? 0,
-          iconUrl: ps.iconUrl,
-          imageUrl: ps.imageUrl,
-          username: usernameElement.innerText,
-          isGeneric: isGeneric,
-          iconSize: settingIconSize,
-          community: community
-        }
-      });
+    if (ffzAddonSupport.isFrankerFaceZReady) {
+      ffzAddonSupport.postBadgeBlueprintToFFZ(node, ps, usernameElement.innerText ?? username, parseInt(settingIconSize) || 32);
+      if (currentPalsonaList[username.toLocaleLowerCase()].slice(-1)?.[0] === ps) return;// leave on last palsona
     }
   }
-  else {
-    // append icon container
-    displayMinasonaIconContainer(node, iconContainer, usernameElement);
-  }
+
+  displayMinasonaIconContainer(node, iconContainer, usernameElement);
 }
 
 /**
