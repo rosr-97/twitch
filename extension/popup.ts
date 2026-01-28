@@ -48,7 +48,7 @@ function handlePalsonaManager(managerList: managerEntry[]) {
     { dataId: "default-minasona", enabled: false },
   ];
   // init state
-  const managerElement = document.getElementById("palsona-manager");
+  const managerElement = document.getElementById("palsona-manager") as HTMLDivElement;
   const channelItems = managerElement.querySelectorAll<HTMLDivElement>(".draggable-item");
   managerElement.childNodes.forEach((child) => {
     child.remove();
@@ -86,7 +86,7 @@ function handlePalsonaManager(managerList: managerEntry[]) {
       const rect = target.getBoundingClientRect();
       const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
       managerElement.insertBefore(dragSrcEl, next ? target.nextSibling : target);
-      //todo update settings
+      savePalsonaManagerList(managerElement);
       updateTwitchPreview();
     }
   });
@@ -94,10 +94,18 @@ function handlePalsonaManager(managerList: managerEntry[]) {
   const checkboxes = managerElement.querySelectorAll("input");
   checkboxes.forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
-      //todo update settings
+      savePalsonaManagerList(managerElement);
       updateTwitchPreview();
     });
   });
+}
+
+async function savePalsonaManagerList(managerElement: HTMLDivElement) {
+  const channelItems = managerElement.querySelectorAll<HTMLDivElement>(".draggable-item");
+  const palsonaSaveList: managerEntry[] = Array.from(channelItems).map((item) => {
+    return { dataId: item.dataset.id, enabled: item.querySelector("input")?.checked };
+  });
+  await browser.storage.sync.set({ palsonaManagerList: palsonaSaveList });
 }
 
 function handleAmountSlider(palsonaLimit: number) {
@@ -116,7 +124,9 @@ function handleAmountSlider(palsonaLimit: number) {
     updateTwitchPreview();
   });
 
-  //todo onchange save
+  palsonaAmount.addEventListener("change", () => {
+    browser.storage.sync.set({ palsonaLimit: palsonaAmount.value });
+  });
 }
 
 function handleSizeSlider(iconSizeVal: number) {
