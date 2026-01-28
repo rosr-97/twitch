@@ -44,8 +44,10 @@ class MinasonaFrankerFaceZAddonHelper extends Object {
       if (!this.isFrankerFaceZReady) return;
 
       this.registerCommunityBadge("minawan", this.defaultCommunityMap.get("minawan")?.[4], this.defaultCommunityMap.get("minawan")?.filter((_, index) => index % 2 === 0));// adds the community
-      this.registerCommunityBadge("wormpal");
-      this.registerCommunityBadge("minyan");
+      
+      const ffzCommunities:{ community: string, iconUrl: string }[] = JSON.parse(localStorage.getItem("FFZ:minasona-twitch-icons.communities"));
+      for (const { community, iconUrl } of ffzCommunities)
+        this.registerCommunityBadge(community, iconUrl);
     });
   }
 
@@ -67,6 +69,12 @@ class MinasonaFrankerFaceZAddonHelper extends Object {
     if (!this.isFrankerFaceZReady) return;
     const community = /(\w+)\/((\w+)(-backfill)?)\/((\w+)\/)?(\w+)_(\d+)x(\d+)\.(\w+)/i.exec(ps.iconUrl ?? ps.imageUrl)?.[3] ?? "minawan";// backfill counts
 
+    let ffzCommunities:{ community: string, iconUrl: string }[] = JSON.parse(localStorage.getItem("FFZ:minasona-twitch-icons.communities")) ?? [];
+    ffzCommunities = ffzCommunities.filter(item => item.community !== community);// remove existing
+    ffzCommunities.push({ community: community, iconUrl: ps.iconUrl });// add new
+    localStorage.setItem("FFZ:minasona-twitch-icons.communities", JSON.stringify(ffzCommunities));
+
+    // add click listener for popover
     node.addEventListener("click", (e) => {
       const target = e.target as HTMLElement;
       if (target.dataset?.badge !== `addon.minasona_twitch_extension.badge_${community}`) return;
@@ -75,9 +83,9 @@ class MinasonaFrankerFaceZAddonHelper extends Object {
       this.showMinasonaPopoverCallback?.(target, ps.imageUrl, ps.fallbackImageUrl);
     });
 
-    const isGeneric = this.defaultCommunityMap?.get(community)?.includes(ps.iconUrl) 
+    const isGeneric = this.defaultCommunityMap?.get(community)?.includes(ps.iconUrl)
       || this.defaultCommunityMap?.get(community)?.includes(ps.imageUrl);
-      
+
     // send badge blueprint to FFZ if available
     window.postMessage({
       FFZ_MINASONATWITCHEXTENSION_BADGE: {

@@ -70,7 +70,7 @@ function addons_ready(event) {
           this.registerTemplate(community, iconUrl ?? imageUrl);
 
         if (this.style.has(`--ffz-minasona-badge-undefined-${community}`) && !this.style.has(`--ffz-minasona-badge-undefined-${community}-image`))
-          this.style.set(`--ffz-minasona-badge-undefined-${community}-image`, `:root { --ffz-minasona-badge-undefined-${community}-image: url("${imageUrl}"); }`);
+          this.style.set(`--ffz-minasona-badge-undefined-${community}-image`, `:root { --ffz-minasona-badge-undefined-${community}-image: url("${iconUrl ?? imageUrl}"); }`);
 
         this.registerUserBadge(community, userId, username, imageUrl, iconUrl, isGeneric);
       }).bind(this));
