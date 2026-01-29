@@ -1,18 +1,5 @@
-const metadata = {
-  name: 'Minasona Twitch Icons',
-  short_name: 'Minasona Twitch Icons',
-  author: 'HellPingwan',
-  maintainer: 'rosrwan',
-  description: 'See cute Minawan not only in the stream but in the chat as well! Displays Minasonas as a badge right next to a username in the chat.',
-  version: '1.4',
-  website: 'https://github.com/minasona-extension/twitch',
-  enabled: true,
-  requires: [],
-  addon: 'minasona_twitch_extension',
-};
-
-let addOnIcon: string = undefined;
-window.addEventListener('message', addOnIcon_callBack);
+let metadata: {} = undefined;
+window.addEventListener('message', addOnMetadata_callBack);
 
 let attempts = 0;
 let current_callback = ffzScriptObserver_callback;
@@ -227,7 +214,7 @@ function addons_ready(event) {
     }
   }
 
-  (MinasonaTwitchExtension as any).register(metadata.addon, { ...metadata, icon: addOnIcon });
+  (MinasonaTwitchExtension as any).register(metadata.addon, metadata);
 }
 
 /**
@@ -283,9 +270,16 @@ function ffzScriptObserver_callback(mutationsList: MutationRecord[], observer: M
 /**
  * Outpost to parse the icon for the addon.
  */
-function addOnIcon_callBack(event) {
+function addOnMetadata_callBack(event) {
   if (event.source !== window) return;
-  if (typeof event.data.FFZ_MINASONATWITCHEXTENSION_ADDONICON !== 'string') return;
-  addOnIcon = event.data.FFZ_MINASONATWITCHEXTENSION_ADDONICON;
-  window.removeEventListener('message', addOnIcon_callBack);
+  if (typeof event.data.FFZ_MINASONATWITCHEXTENSION_SETMETADATA !== 'object') return;
+  metadata = event.data.FFZ_MINASONATWITCHEXTENSION_SETMETADATA;
+  metadata = {
+    ...metadata,
+    short_name: metadata.name,
+    addon: 'minasona_twitch_extension',
+    enabled: true,
+    requires: []
+  };
+  window.removeEventListener('message', addOnMetadata_callBack);
 }
