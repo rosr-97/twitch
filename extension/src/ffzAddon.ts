@@ -28,8 +28,15 @@ class MinasonaFrankerFaceZAddonHelper extends Object {
   /**
    * Sets the addon icon in FFZ
    */
-  setAddonIcon(imageUrl: string) {
-    window.postMessage({ FFZ_MINASONATWITCHEXTENSION_ADDONICON: imageUrl });// pushes the ffz addon icon
+  setAddonMetadata(metadata: any) {
+    window.postMessage({
+      FFZ_MINASONATWITCHEXTENSION_SETMETADATA: {
+        ...metadata,
+        author: 'HellPingwan',
+        maintainer: 'rosrwan',
+        website: 'https://github.com/minasona-extension/twitch',
+      }
+    });// pushes the ffz addon icon
   }
 
   /**
@@ -44,8 +51,8 @@ class MinasonaFrankerFaceZAddonHelper extends Object {
       if (!this.isFrankerFaceZReady) return;
 
       this.registerCommunityBadge("minawan", this.defaultCommunityMap.get("minawan")?.[4], this.defaultCommunityMap.get("minawan")?.filter((_, index) => index % 2 === 0));// adds the community
-      
-      const ffzCommunities:{ community: string, iconUrl: string }[] = JSON.parse(localStorage.getItem("FFZ:minasona-twitch-icons.communities"));
+
+      const ffzCommunities: { community: string, iconUrl: string }[] = JSON.parse(localStorage.getItem("FFZ:minasona-twitch-icons.communities"));
       for (const { community, iconUrl } of ffzCommunities)
         this.registerCommunityBadge(community, iconUrl);
     });
@@ -69,10 +76,13 @@ class MinasonaFrankerFaceZAddonHelper extends Object {
     if (!this.isFrankerFaceZReady) return;
     const community = /(\w+)\/((\w+)(-backfill)?)\/((\w+)\/)?(\w+)_(\d+)x(\d+)\.(\w+)/i.exec(ps.iconUrl ?? ps.imageUrl)?.[3] ?? "minawan";// backfill counts
 
-    let ffzCommunities:{ community: string, iconUrl: string }[] = JSON.parse(localStorage.getItem("FFZ:minasona-twitch-icons.communities")) ?? [];
-    ffzCommunities = ffzCommunities.filter(item => item.community !== community);// remove existing
-    ffzCommunities.push({ community: community, iconUrl: ps.iconUrl });// add new
-    localStorage.setItem("FFZ:minasona-twitch-icons.communities", JSON.stringify(ffzCommunities));
+    clearInterval(this.storageInterval);// spam prevention
+    this.storageInterval = setTimeout(() => {
+      let ffzCommunities: { community: string, iconUrl: string }[] = JSON.parse(localStorage.getItem("FFZ:minasona-twitch-icons.communities")) ?? [];
+      ffzCommunities = ffzCommunities.filter(item => item.community !== community);// remove existing
+      ffzCommunities.push({ community: community, iconUrl: ps.iconUrl });// add new
+      localStorage.setItem("FFZ:minasona-twitch-icons.communities", JSON.stringify(ffzCommunities));
+    }, 800);
 
     // add click listener for popover
     node.addEventListener("click", (e) => {

@@ -27,7 +27,12 @@ let settingIconSize = "32";
 
 applySettings();
 fetchMinasonaMap().then(() => {
-  ffzAddonSupport.setAddonIcon(defaultMinasonaMap?.[4]);
+  ffzAddonSupport.setAddonMetadata({
+    name: browser.runtime.getManifest().name,
+    description: browser.runtime.getManifest().description,
+    version: browser.runtime.getManifest().version,
+    icon: defaultMinasonaMap?.[4]
+  });
   ffzAddonSupport.defaultCommunityMap.set("minawan", defaultMinasonaMap);
 });
 startSupervisor();
