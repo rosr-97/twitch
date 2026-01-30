@@ -2,6 +2,13 @@ import { MAIN_CHANNEL, UPDATE_INTERVAL } from "./config";
 import { showMinasonaPopover } from "./minasona-popover";
 import { managerEntry, MinasonaStorage, PalsonaEntry } from "./types";
 import browser from "webextension-polyfill";
+import { MinasonaFrankerFaceZAddonHelper } from "./ffzAddon";
+
+const ffzAddonSupport: MinasonaFrankerFaceZAddonHelper = new MinasonaFrankerFaceZAddonHelper();
+ffzAddonSupport.onShowMinasonaPopover(showMinasonaPopover);
+ffzAddonSupport.onReady((event: MinasonaFrankerFaceZAddonHelper) => {
+  event.postCommunityBadge("minawan", defaultMinasonaMap?.[4], defaultMinasonaMap?.filter((_, index) => index % 2 === 0));// adds the community
+});
 
 // the mapping of twitch usernames to minasona names and image urls
 let minasonaMap: MinasonaStorage = {};
@@ -26,7 +33,14 @@ let settingPalsonaLimit = "2";
 let settingIconSize = "32";
 
 applySettings();
-fetchMinasonaMap();
+fetchMinasonaMap().then(() => {
+  ffzAddonSupport.postAddonMetadata({
+    name: browser.runtime.getManifest().name,
+    description: browser.runtime.getManifest().description,
+    version: browser.runtime.getManifest().version,
+    icon: defaultMinasonaMap?.[4]
+  });
+});
 startSupervisor();
 
 setInterval(fetchMinasonaMap, UPDATE_INTERVAL * 60 * 1000);
@@ -66,6 +80,8 @@ async function applySettings() {
   if (settingIconSize != result.iconSize) {
     settingIconSize = result.iconSize || "32";
   }
+  else // refresh badges but on size
+    ffzAddonSupport.postRefresh();
 
   // reset current lookup list because settings changed and it needs to be regenerated
   currentPalsonaList = {};
@@ -228,6 +244,12 @@ function processNode(node: Node, channelName: string) {
   for (const ps of currentPalsonaList[username]) {
     const icon = createPalsonaIcon(ps);
     iconContainer.append(icon);
+
+    if (ffzAddonSupport.isFrankerFaceZReady) {
+      const isGeneric = defaultMinasonaMap.includes(ps.iconUrl) || defaultMinasonaMap?.includes(ps.imageUrl);
+      ffzAddonSupport.postBadgeBlueprintToFFZ(node, ps, usernameElement.innerText ?? username, parseInt(settingIconSize) || 32, isGeneric);
+      if (currentPalsonaList[username.toLocaleLowerCase()].slice(-1)?.[0] === ps) return;// leave on last palsona
+    }
   }
 
   displayMinasonaIconContainer(node, iconContainer, usernameElement);

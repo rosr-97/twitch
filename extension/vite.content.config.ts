@@ -12,5 +12,6 @@ export default defineConfig({
         entryFileNames: "content.js", // Forces simple names: background.js, content.js
       },
     },
+    emptyOutDir: false,
   },
 });
