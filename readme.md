@@ -3,10 +3,16 @@
 See cute Minawan not only in the stream but in the chat as well!
 
 This extension displays the Minasona of a Minawan as a badge right next to their username in Twitch chat. It's a neat addon to the chat and helps people get to know everyone's Minasonas better.
+Additionally it can display other Palsonas from communities within the circle.
 
 Settings:
 - Location: Choose to show icons only in Cerber's chat or enable them globally across all of Twitch.
-- Defaults: Toggle "standard" Minasonas on or off for those who don't have a custom one yet.
+- Priority List: Rank the prioritiy of different Palsona categories and toggle them on or off.
+  - Minasonas: Displays Minawans Minasonas.
+  - Currently watched channel Palsonas: Displays the Palsona of the currently watched community.
+  - Other channel Palsonas: Diplays other communities Palsonas.
+  - Default Minasonas: Toggle "standard" Minasonas on or off for those who don't have a custom one yet.
+- Limit Palsonas: Decide how many icons there should be for each user by limiting them.
 - Size: Use the slider to make the chat icons smaller or larger.
 
 ## Out Now
@@ -21,17 +27,16 @@ https://microsoftedge.microsoft.com/addons/detail/minasona-twitch-icons/annkpdga
 [Download from chrome store](https://chromewebstore.google.com/detail/minasona-twitch-icons/paoappdblefbmihfcjbmcebhdgabfkib)
 
 ### Firefox v1.3
-https://addons.mozilla.org/de/firefox/addon/minasona-twitch-icons/
+https://addons.mozilla.org/firefox/addon/minasona-twitch-icons/
 
 ## Changelog
 
-### 1.4 (in development)
+### 1.4
 - Supports Palsonas from multiple communities
-  - The display of a Palsona for a user happens using the following priorities:
-  1. Minawan
-  2. Currently watched channel Palsona
-  3. Other channel Palsonas...
-  4. Default Minasona (if checked in the settings)
+  - The display of Palsonas for a user is decided by the user selected priority list
+- Fetches API updates more regularly
+
+- Firefox: Fixed a bug where the extension didn't receive any updates after reopening the browser.
 
 ### 1.3
 - You can now **set your own Minasona** on the website: https://minawan.me/ Login with Discord and make sure you have your Twitch account linked. Thanks Hoopywan!
@@ -54,6 +59,8 @@ https://addons.mozilla.org/de/firefox/addon/minasona-twitch-icons/
 ## Docs
 
 ### Building the extension
+
+_Use Node v22.14.0_
 
 1. Install dependencies:
 ```console
@@ -78,15 +85,3 @@ node build.js firefox
 - `background.ts` is the background script of the extension. It is used to fetch the user list from the API and store it in the local browser storage.
 - `content.ts` is the frontend script. It can interact with the web page and is used to read the usernames in the chat and create and insert the corresponding icons.
 - `popup.html` / `popup.js` is the popup displayed when opening the extension settings. The html handles the display of the popup while the js file stores the settings in the local browser storage.
-
-### Porting the extension
-
-1. Go to `config.ts` and set your communities main channel. This has to be the channel name from the URL of the channel.
-```typescript
-export const MAIN_CHANNEL = "cerbervt";
-```
-
-2. Use `popup.html` to change the appearance of the settings page. You should alter the text and CSS to match the theme of your community.<br/>
-_Feel free to change the whole page if you feel like but keep in mind, if the IDs of the input elements are changed, you need to change them in `popup.js` as well._
-
-3. Decide how you want to handle the setting "Show Minasonas for everywan". Right now this works by inserting a random minasona from `assets/` for users without a Minasona / any other Palsona (depending on settings). The background script parses the images into data URLs which are then stored in the local browser storage. You can exchange the images of this folder if you want to use this feature, however you need to change the filenames in `background.ts` as well. **I made it so two consecutive files always belong together with _.avif_ being the standard and the other one as a fallback. Change this in the function _createPalsonaEntryList( )_ in `content.ts` if you don't want it.**

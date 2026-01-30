@@ -1,6 +1,6 @@
-import { MAIN_CHANNEL } from "./config";
+import { MAIN_CHANNEL, UPDATE_INTERVAL } from "./config";
 import { showMinasonaPopover } from "./minasona-popover";
-import { MinasonaStorage, PalsonaEntry } from "./types";
+import { managerEntry, MinasonaStorage, PalsonaEntry } from "./types";
 import browser from "webextension-polyfill";
 import { MinasonaFrankerFaceZAddonHelper } from "./ffzAddon";
 
@@ -23,9 +23,13 @@ let currentPalsonaList: { [username: string]: PalsonaEntry[] } = {};
 
 // settings - initialize with defaults
 let settingShowInOtherChats = true;
-let settingShowForEveryone = false;
-let settingShowOtherPalsonas = true;
-let settingShowAllPalsonas = false;
+let settingPalsonaManagerList: managerEntry[] = [
+  { dataId: "main-channel", enabled: true },
+  { dataId: "current-channel", enabled: true },
+  { dataId: "other-channels", enabled: false },
+  { dataId: "default-minasona", enabled: false },
+];
+let settingPalsonaLimit = "2";
 let settingIconSize = "32";
 
 applySettings();
@@ -39,12 +43,18 @@ fetchMinasonaMap().then(() => {
 });
 startSupervisor();
 
+setInterval(fetchMinasonaMap, UPDATE_INTERVAL * 60 * 1000);
+
 /**
  * Fetches settings from the browsers storage and applies them to the local variables.
  */
 async function applySettings() {
-  const result: { showInOtherChats?: boolean; showForEveryone?: boolean; showOtherPalsonas?: boolean; showAllPalsonas?: boolean; iconSize?: string } =
-    await browser.storage.sync.get(["showInOtherChats", "showForEveryone", "showOtherPalsonas", "showAllPalsonas", "iconSize"]);
+  const result: { showInOtherChats?: boolean; palsonaManagerList?: managerEntry[]; palsonaLimit?: string; iconSize?: string } = await browser.storage.sync.get([
+    "showInOtherChats",
+    "palsonaManagerList",
+    "palsonaLimit",
+    "iconSize",
+  ]);
 
   if (settingShowInOtherChats != result.showInOtherChats) {
     settingShowInOtherChats = result.showInOtherChats ?? true;
@@ -54,16 +64,17 @@ async function applySettings() {
     }
   }
 
-  if (settingShowForEveryone != result.showForEveryone) {
-    settingShowForEveryone = result.showForEveryone ?? false;
+  if (settingPalsonaManagerList != result.palsonaManagerList) {
+    settingPalsonaManagerList = result.palsonaManagerList ?? [
+      { dataId: "main-channel", enabled: true },
+      { dataId: "current-channel", enabled: true },
+      { dataId: "other-channels", enabled: false },
+      { dataId: "default-minasona", enabled: false },
+    ];
   }
 
-  if (settingShowOtherPalsonas != result.showOtherPalsonas) {
-    settingShowOtherPalsonas = result.showOtherPalsonas ?? true;
-  }
-
-  if (settingShowAllPalsonas != result.showAllPalsonas) {
-    settingShowAllPalsonas = result.showAllPalsonas ?? false;
+  if (settingPalsonaLimit != result.palsonaLimit) {
+    settingPalsonaLimit = result.palsonaLimit || "2";
   }
 
   if (settingIconSize != result.iconSize) {
@@ -83,8 +94,8 @@ browser.storage.onChanged.addListener((_changes, namespace) => {
 });
 
 /**
- * Gets the minasona mapping from browser storage and starts the supervisor.
- * The mapping is set by the background script and updated once per hour.
+ * Gets the minasona mapping from browser storage.
+ * The mapping is set by the background script and updated every UPDATE_INTERVAL mins.
  */
 async function fetchMinasonaMap() {
   const result: { minasonaMap?: MinasonaStorage; standardMinasonaUrls?: string[] } = await browser.storage.local.get(["minasonaMap", "standardMinasonaUrls"]);
@@ -92,6 +103,8 @@ async function fetchMinasonaMap() {
   if (!result) return;
   minasonaMap = result.minasonaMap || {};
   defaultMinasonaMap = result.standardMinasonaUrls || [];
+  currentPalsonaList = {};
+  console.log(`${new Date().toLocaleTimeString()}: Updated minasona map and reset current lookup list.`);
 }
 
 /**
@@ -141,6 +154,7 @@ function startSupervisor() {
  */
 function mountObserver(container: HTMLElement) {
   disconnectObserver();
+  currentPalsonaList = {};
 
   currentChatContainer = container;
 
@@ -218,7 +232,7 @@ function processNode(node: Node, channelName: string) {
 
   if (!currentPalsonaList[username]) {
     // calculate palsonas to display for this user based on current channel and settings
-    currentPalsonaList[username] = createPalsonaEntryList(username, channelName);
+    currentPalsonaList[username] = getPalsonaPriorityList(minasonaMap[username] || {}, channelName);
   }
 
   if (currentPalsonaList[username].length == 0) return;
@@ -242,71 +256,56 @@ function processNode(node: Node, channelName: string) {
 }
 
 /**
- * Creates a palsona (priority) list depending on the users settings.
- * @param username The target user.
- * @param channelName The currently watched channel name.
- * @returns The palsona list to display in chat for this user.
- */
-function createPalsonaEntryList(username: string, channelName: string): PalsonaEntry[] {
-  let palsonas: PalsonaEntry[] = [];
-
-  if (settingShowOtherPalsonas) {
-    // if other communities palsonas can be shown -> get the ordered list
-    palsonas = getPalsonaPriorityList(minasonaMap[username], channelName);
-  } else {
-    // otherwise just check for main channel palsona
-    palsonas = minasonaMap[username]?.[MAIN_CHANNEL] ? [minasonaMap[username][MAIN_CHANNEL]] : [];
-  }
-
-  if (settingShowForEveryone && palsonas.length == 0) {
-    // user has no palsonas but show for everyone is checked -> insert random default minasona
-    const rnd = Math.floor((Math.random() * Object.keys(defaultMinasonaMap).length) / 2) * 2;
-    palsonas = [
-      {
-        iconUrl: defaultMinasonaMap[rnd],
-        fallbackIconUrl: defaultMinasonaMap[rnd + 1],
-        imageUrl: "",
-        fallbackImageUrl: "",
-      },
-    ];
-  }
-  if (!settingShowAllPalsonas) {
-    // only display one palsona
-    palsonas = palsonas[0] ? [palsonas[0]] : [];
-  }
-
-  return palsonas;
-}
-
-/**
- * Determine which palsona(s) to use for this user and channel using the following priority:
- * 1. Minasona (main channel) image
- * 2. currently watched channel -sona
- * after that all other palsonas present for this user
+ * Determine which palsonas to use for a person watching this channel using the priority list the user set in the settings.
+ * The default Minasona is only inserted if the list is empty when its their turn in the priority list.
  *
  * @param userElement The user element from the Minasona storage.
  * @param currentChannelName The currently watched channel name.
  * @returns An array of PalsonaEntrys representing the priority of display.
  */
 function getPalsonaPriorityList(userElement: { [communityName: string]: PalsonaEntry }, currentChannelName: string): PalsonaEntry[] {
-  if (!userElement || Object.entries(userElement).length == 0) {
-    return [];
-  }
-
+  // return array to populate
   const palsonaPrioList: PalsonaEntry[] = [];
-  if (userElement[MAIN_CHANNEL]) {
-    palsonaPrioList.push(userElement[MAIN_CHANNEL]);
-  }
+  // user set prio list without disabled entries
+  const cleanedManagerPrioList: managerEntry[] = settingPalsonaManagerList.filter((prio) => prio.enabled);
 
-  if (MAIN_CHANNEL != currentChannelName && userElement[currentChannelName]) {
-    palsonaPrioList.push(userElement[currentChannelName]);
-  }
+  // count how many icons we inserted, so we don't go over the limit
+  let index = 0;
+  const limit = parseInt(settingPalsonaLimit);
 
-  for (const [communityName, entry] of Object.entries(userElement)) {
-    if (communityName == MAIN_CHANNEL || communityName == currentChannelName) {
+  for (const prio of cleanedManagerPrioList) {
+    if (index == limit) break;
+    // other channels -> add all entries that are not main channel or current channel
+    if (prio.dataId === "other-channels") {
+      for (const [communityName, entry] of Object.entries(userElement)) {
+        if (index == limit) break;
+        // filter main and current
+        if (communityName == MAIN_CHANNEL || communityName == currentChannelName) continue;
+        palsonaPrioList.push(entry);
+        index++;
+      }
       continue;
     }
-    palsonaPrioList.push(entry);
+
+    const prioString = prio.dataId === "main-channel" ? MAIN_CHANNEL : prio.dataId === "current-channel" ? currentChannelName : "";
+    if (prioString === "" && palsonaPrioList.length == 0) {
+      // add default minasona
+      const rnd = Math.floor((Math.random() * Object.keys(defaultMinasonaMap).length) / 2) * 2;
+      palsonaPrioList.push({
+        iconUrl: defaultMinasonaMap[rnd],
+        fallbackIconUrl: defaultMinasonaMap[rnd + 1],
+        imageUrl: "",
+        fallbackImageUrl: "",
+      });
+      index++;
+      continue;
+    }
+    if (userElement[prioString]) {
+      if (palsonaPrioList.includes(userElement[prioString])) continue;
+      palsonaPrioList.push(userElement[prioString]);
+      index++;
+      continue;
+    }
   }
   return palsonaPrioList;
 }

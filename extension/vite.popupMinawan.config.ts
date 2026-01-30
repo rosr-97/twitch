@@ -5,11 +5,11 @@ export default defineConfig({
     outDir: "dist",
     rollupOptions: {
       input: {
-        content: "popup.ts",
+        content: "popupMinawan.ts",
       },
       output: {
         inlineDynamicImports: true,
-        entryFileNames: "popup.js",
+        entryFileNames: "popupMinawan.js",
       },
     },
     emptyOutDir: false,

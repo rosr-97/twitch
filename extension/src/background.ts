@@ -1,5 +1,6 @@
 import browser from "webextension-polyfill";
 import { MinasonaStorage } from "./types";
+import { UPDATE_INTERVAL } from "./config";
 
 const DEFAULT_MINASONAS = [
   "Minawan_Blue.avif",
@@ -44,40 +45,62 @@ async function updateMinasonaMap() {
       });
     });
 
-    browser.storage.local.set({ minasonaMap: reducedData });
+    browser.storage.local.set({ minasonaMap: reducedData, lastUpdate: new Date().getTime() });
     console.log(`${new Date().toLocaleTimeString()} Minasona map updated.`);
   } catch (error) {
     console.error(`${new Date().toLocaleTimeString()} Failed to fetch minasonas: `, error);
   }
 }
 
-// update on install and then every 60 mins
+// Update data on install and set up alarm
 browser.runtime.onInstalled.addListener(async () => {
   updateMinasonaMap();
-  browser.alarms.create("refreshMinasonas", { periodInMinutes: 60 });
+  setupAlarm();
 
   // create data urls for standard minasonas
   const data: string[] = [];
 
   for (const asset of DEFAULT_MINASONAS) {
-    const url = browser.runtime.getURL(`assets/${asset}`);
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const reader = new FileReader();
-    await new Promise<void>((resolve) => {
-      reader.onload = () => {
-        data.push(reader.result as string);
-        resolve();
-      };
-      reader.readAsDataURL(blob);
-    });
+    data.push(await getDataURL(asset));
   }
 
   browser.storage.local.set({ standardMinasonaUrls: data });
 });
+
+// Update data on browser startup and set up alarm
+browser.runtime.onStartup.addListener(() => {
+  updateMinasonaMap();
+  setupAlarm();
+});
+
+async function getDataURL(asset: string): Promise<string> {
+  const url = browser.runtime.getURL(`assets/${asset}`);
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const reader = new FileReader();
+  let result = "";
+  await new Promise<void>((resolve) => {
+    reader.onload = () => {
+      result = reader.result as string;
+      resolve();
+    };
+    reader.readAsDataURL(blob);
+  });
+  return result;
+}
 
 browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "refreshMinasonas") {
     updateMinasonaMap();
   }
 });
+
+/**
+ * Create an alarm (if not existing) for refreshing the minasona data from the API.
+ */
+async function setupAlarm() {
+  const alarm = await browser.alarms.get("refreshMinasonas");
+  if (!alarm) {
+    browser.alarms.create("refreshMinasonas", { periodInMinutes: UPDATE_INTERVAL });
+  }
+}
