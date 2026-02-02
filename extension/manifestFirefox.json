@@ -33,5 +33,15 @@
         "required": ["none"]
       }
     }
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/Minawan_Purple.webp",
+        "assets/Ditto.png",
+        "assets/wormpal.png"
+      ],
+      "matches": ["https://*.twitch.tv/*"]
+    }
+  ]
 }

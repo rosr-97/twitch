@@ -5,9 +5,22 @@ import browser from "webextension-polyfill";
 import { MinasonaFrankerFaceZAddonHelper } from "./ffzAddon";
 
 const ffzAddonSupport: MinasonaFrankerFaceZAddonHelper = new MinasonaFrankerFaceZAddonHelper();
-ffzAddonSupport.onShowMinasonaPopover(showMinasonaPopover);
-ffzAddonSupport.onReady((event: MinasonaFrankerFaceZAddonHelper) => {
-  event.postCommunityBadge("minawan", defaultMinasonaMap?.[4], defaultMinasonaMap?.filter((_, index) => index % 2 === 0));// adds the community
+ffzAddonSupport.on('show-minasona-popover', showMinasonaPopover);
+ffzAddonSupport.on('ready', (event) => {
+  event.postCommunityBadge("minawan", browser.runtime.getURL("assets/Minawan_Purple.webp"), defaultMinasonaMap?.filter((_, index) => index % 2 === 0));// adds the community
+  event.postCommunityBadge("wormpal", browser.runtime.getURL("assets/wormpal.png"));
+});
+ffzAddonSupport.on('setup', async (event) => {
+  event.postAddonMetadata({
+    name: browser.runtime.getManifest().name,
+    description: browser.runtime.getManifest().description,
+    version: browser.runtime.getManifest().version,
+    author: "HellPingwan",
+    maintainer: "",
+    website: "https://github.com/minasona-extension/twitch",
+    icon: browser.runtime.getURL("assets/Minawan_Purple.webp"),
+    genericIcon: browser.runtime.getURL("assets/Ditto.png"),
+  });
 });
 
 // the mapping of twitch usernames to minasona names and image urls
@@ -33,14 +46,7 @@ let settingPalsonaLimit = "2";
 let settingIconSize = "32";
 
 applySettings();
-fetchMinasonaMap().then(() => {
-  ffzAddonSupport.postAddonMetadata({
-    name: browser.runtime.getManifest().name,
-    description: browser.runtime.getManifest().description,
-    version: browser.runtime.getManifest().version,
-    icon: defaultMinasonaMap?.[4]
-  });
-});
+fetchMinasonaMap();
 startSupervisor();
 
 setInterval(fetchMinasonaMap, UPDATE_INTERVAL * 60 * 1000);
@@ -241,18 +247,16 @@ function processNode(node: Node, channelName: string) {
   const iconContainer = document.createElement("div");
   iconContainer.classList.add("minasona-icon-container");
 
-  for (const ps of currentPalsonaList[username]) {
+  for (const [index, ps] of Object.entries(currentPalsonaList[username])) {
     const icon = createPalsonaIcon(ps);
     iconContainer.append(icon);
 
-    if (ffzAddonSupport.isFrankerFaceZReady) {
-      const isGeneric = defaultMinasonaMap.includes(ps.iconUrl) || defaultMinasonaMap?.includes(ps.imageUrl);
-      ffzAddonSupport.postBadgeBlueprintToFFZ(node, ps, usernameElement.innerText ?? username, parseInt(settingIconSize) || 32, isGeneric);
-      if (currentPalsonaList[username.toLocaleLowerCase()].slice(-1)?.[0] === ps) return;// leave on last palsona
-    }
+    const isGeneric = defaultMinasonaMap.includes(ps.iconUrl) || defaultMinasonaMap?.includes(ps.imageUrl);
+    ffzAddonSupport.postBadgeBlueprint(node, ps, parseInt(index) || 0, usernameElement.innerText ?? username, parseInt(settingIconSize) || 32, isGeneric);
   }
 
-  displayMinasonaIconContainer(node, iconContainer, usernameElement);
+  if (!ffzAddonSupport.isFrankerFaceZReady)
+    displayMinasonaIconContainer(node, iconContainer, usernameElement);
 }
 
 /**

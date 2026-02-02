@@ -6,7 +6,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         ffzIntegration: "src/ffzIntegration.ts",
-        ffzAddon: "src/ffzAddon.ts",
       },
       output: {
         entryFileNames: "[name].js",
